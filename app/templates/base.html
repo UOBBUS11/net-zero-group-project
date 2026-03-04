@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Eco-Transport System</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    <nav style="background: #333; padding: 10px; margin-bottom: 20px;">
+        <a href="{{ url_for('dashboard') }}" style="color: white; margin-right: 15px;">Dashboard</a>
+        <a href="{{ url_for('log_trip') }}" style="color: white; margin-right: 15px;">Log Trip</a>
+        <a href="{{ url_for('admin_panel') }}" style="color: white; margin-right: 15px;">Admin</a>
+        <a href="{{ url_for('logout') }}" style="color: white; float: right;">Logout</a>
+    </nav>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</body>
+</html>

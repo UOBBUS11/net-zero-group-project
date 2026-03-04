@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Welcome, {{ user.username if user else 'Guest' }}!</h1>
+    
+    <p>Your Current Score: <strong>{{ user.current_score if user else 0 }}</strong> Points</p>
+
+    <p><a href="{{ url_for('log_trip') }}">Log a New Trip</a></p>
+
+    <hr>
+
+    <h3>Leaderboard</h3>
+    <table border="1" style="width: 50%; text-align: left; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th style="padding: 8px;">Rank</th>
+                <th style="padding: 8px;">User</th>
+                <th style="padding: 8px;">Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in leaderboard %}
+            <tr>
+                <td style="padding: 8px;">{{ loop.index }}</td>
+                <td style="padding: 8px;">{{ u.username }} {{ '(You)' if user and u.username == user.username else '' }}</td>
+                <td style="padding: 8px;">{{ u.current_score }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

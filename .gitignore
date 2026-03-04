@@ -1,0 +1,14 @@
+# 忽略 PyCharm 設定
+.idea/
+
+# 忽略虛擬環境 (這就是那 1000 多個檔案的來源)
+.venv/
+venv/
+ENV/
+
+# 忽略資料庫
+*.db
+
+# 忽略 Python 快取
+__pycache__/
+*.py[cod]
