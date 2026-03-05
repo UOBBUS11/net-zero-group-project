@@ -1,6 +1,8 @@
-from flask import render_template, session, redirect, url_for
+from flask import render_template, session, redirect, url_for, flash, request
 from app import app, db
 from app.models import User, TransportMode, Administrator
+from app.forms import LoginForm
+
 
 
 def create_default_data():
@@ -20,7 +22,6 @@ def create_default_data():
     db.session.commit()
 
 
-
 @app.before_request
 def initialize():
     app.before_request_funcs[None].remove(initialize)
@@ -30,7 +31,9 @@ def initialize():
 @app.route('/dashboard')
 def dashboard():
 
-    user_id = session.get('user_id', 1)
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user_id = session['user_id'] # revised by member2
 
     user = User.query.get(user_id)
 
@@ -43,12 +46,50 @@ def dashboard():
 @app.route('/')
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    return "<h2>Login Page (Reserved for Member 2)</h2>"
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    if 'admin_id' in session:
+        return redirect(url_for('admin_panel'))
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        username = form.username.data
+
+
+        if form.is_admin.data:
+            admin = Administrator.query.filter_by(username=username).first()
+            if admin and admin.password == "123":
+                session['admin_id'] = admin.id
+                flash('Admin Login Successful!', 'success')
+                return redirect(url_for('admin_panel'))
+            else:
+                flash('Invalid Admin Credentials!', 'error')
+
+
+        else:
+            user = User.query.filter_by(username=username).first()
+            if not user:
+
+                user = User(username=username, password="123", current_score=0)
+                db.session.add(user)
+                db.session.commit()
+                flash('New User Registered and Logged In!', 'success')
+            else:
+                flash('Login Successful!', 'success')
+
+
+            session['user_id'] = user.id
+            return redirect(url_for('dashboard'))
+
+    return render_template('login.html', form=form)
 
 
 @app.route('/logout')
 def logout():
-    return "<h2>Logout (Reserved for Member 2)</h2>"
+    session.clear()
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('login'))
 
 
 @app.route('/log_trip', methods=['GET', 'POST'])
