@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Log a New Trip</h2>
+  <hr>
+
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    <p>
+      <strong>{{ form.distance.label }}</strong><br>
+      {{ form.distance(placeholder="e.g. 5.5") }}
+      {% for error in form.distance.errors %}
+        <span style="color: red;">{{ error }}</span>
+      {% endfor %}
+    </p>
+
+    <p>
+      <strong>{{ form.mode.label }}</strong><br>
+      {{ form.mode() }}
+      {% for error in form.mode.errors %}
+        <span style="color: red;">{{ error }}</span>
+      {% endfor %}
+    </p>
+
+    <p>{{ form.submit() }}</p>
+  </form>
+{% endblock %}

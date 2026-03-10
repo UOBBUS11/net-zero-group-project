@@ -1,8 +1,7 @@
-from flask import render_template, session, redirect, url_for, flash, request
-from app import app, db
-from app.models import User, TransportMode, Administrator
-from app.forms import LoginForm
-
+from flask import render_template, redirect, url_for, session, flash
+from app import app
+from app.models import db, TransportMode, User, Administrator
+from app.forms import LogTripForm, LoginForm
 
 
 def create_default_data():
@@ -94,7 +93,21 @@ def logout():
 
 @app.route('/log_trip', methods=['GET', 'POST'])
 def log_trip():
-    return "<h2>Log Trip (Reserved for Member 3 & 4)</h2>"
+    form = LogTripForm()
+
+    modes = TransportMode.query.all()
+
+    # Optional robustness: if DB has no modes, seed once then re-query
+    if not modes:
+        create_default_data()
+        modes = TransportMode.query.all()
+
+    form.mode.choices = [(m.id, m.mode_name) for m in modes]
+
+    if form.validate_on_submit():
+        print(f"[Member 3 Test] Distance={form.distance.data} ModeID={form.mode.data}")
+
+    return render_template('log_trip.html', form=form)
 
 
 @app.route('/admin', methods=['GET', 'POST'])
