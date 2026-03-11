@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Trip Logged Successfully! ✅</h2>
+
+    <div style="border: 1px solid #ccc; padding: 20px; border-radius: 8px; max-width: 500px;">
+        <h3>Trip Summary</h3>
+        <p><strong>Transport Mode:</strong> {{ trip.mode.mode_name }}</p>
+        <p><strong>Distance:</strong> {{ trip.distance_km }} km</p>
+        
+        <p><strong>Carbon Emission:</strong> {{ trip.carbon_emission }} kg CO2</p>
+        
+        <hr>
+
+        <h3>Score Earned:</h3>
+        <h1 style="color: {{ 'green' if trip.score_earned >= 0 else 'red' }}; margin-top: 0;">
+            {{ '+' if trip.score_earned > 0 else '' }}{{ trip.score_earned }} Points
+        </h1>
+
+        <div style="background-color: #f8f9fa; border-left: 5px solid {{ '#28a745' if trip.score_earned >= 0 else '#dc3545' }}; padding: 15px; margin-top: 20px;">
+            <strong>AI Recommendation:</strong>
+            <p style="margin: 5px 0 0 0;">{{ recommendation }}</p>
+        </div>
+    </div>
+
+    <br>
+    <a href="{{ url_for('dashboard') }}" style="margin-right: 15px;">Back to Dashboard</a>
+    <a href="{{ url_for('log_trip') }}">Log Another Trip</a>
+{% endblock %}
