@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>⚙️ Admin Panel: Scoring Rules</h2>
+    
+    <h3>Current Rules</h3>
+    <table border="1" style="width: 60%; text-align: left; border-collapse: collapse; margin-bottom: 30px;">
+        <thead style="background-color: #f2f2f2;">
+            <tr>
+                <th style="padding: 8px;">ID</th>
+                <th style="padding: 8px;">Mode Name</th>
+                <th style="padding: 8px;">Emission Factor</th>
+                <th style="padding: 8px;">Base Points</th>
+                <th style="padding: 8px;">Points / Km</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mode in modes %}
+            <tr>
+                <td style="padding: 8px;">{{ mode.id }}</td>
+                <td style="padding: 8px;"><strong>{{ mode.mode_name }}</strong></td>
+                <td style="padding: 8px;">{{ mode.emission_factor }}</td>
+                <td style="padding: 8px; color: blue;">{{ mode.base_points }}</td>
+                <td style="padding: 8px; color: {{ 'red' if mode.points_per_km < 0 else 'green' }};">
+                    {{ mode.points_per_km }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr>
+    
+    <h3>Update Rule</h3>
+    <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; max-width: 400px;">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <p>
+                <strong>{{ form.mode_id.label }}</strong><br>
+                {{ form.mode_id(style="width: 100%; padding: 5px;") }}
+            </p>
+
+            <p>
+                <strong>{{ form.base_points.label }}</strong><br>
+                {{ form.base_points(placeholder="e.g. 50") }}
+            </p>
+            
+            <p>
+                <strong>{{ form.points_per_km.label }}</strong><br>
+                {{ form.points_per_km(placeholder="e.g. 10 or -5") }}
+            </p>
+            
+            <p style="margin-top: 20px;">
+                {{ form.submit(style="background: #28a745; color: white; padding: 8px 15px; border: none; cursor: pointer;") }}
+            </p>
+        </form>
+    </div>
+{% endblock %}
