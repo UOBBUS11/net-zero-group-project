@@ -25,6 +25,7 @@ class Trip(db.Model):
     mode_id = db.Column(db.Integer, db.ForeignKey('transport_mode.id'), nullable=False)
     mode = db.relationship('TransportMode')
 
+<<<<<<< HEAD
     def calculate_score(self):
 
         self.carbon_emission = self.distance_km * self.mode.emission_factor
@@ -39,6 +40,8 @@ class Trip(db.Model):
         else:
             return "Great Job! Thank you for choosing green transport."
 
+=======
+>>>>>>> origin/AdminPanel-byAlim
 class Administrator(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
