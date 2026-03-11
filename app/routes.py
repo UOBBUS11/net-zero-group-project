@@ -1,6 +1,6 @@
 from flask import render_template, redirect, url_for, session, flash
 from app import app
-from app.models import db, TransportMode, User, Administrator
+from app.models import db, TransportMode, User, Administrator, Trip
 from app.forms import LogTripForm, LoginForm
 
 
@@ -94,7 +94,7 @@ def logout():
 @app.route('/log_trip', methods=['GET', 'POST'])
 def log_trip():
     form = LogTripForm()
-
+    user_id = session.get('user_id')
     modes = TransportMode.query.all()
 
     # Optional robustness: if DB has no modes, seed once then re-query
@@ -105,8 +105,14 @@ def log_trip():
     form.mode.choices = [(m.id, m.mode_name) for m in modes]
 
     if form.validate_on_submit():
-        print(f"[Member 3 Test] Distance={form.distance.data} ModeID={form.mode.data}")
-
+        distance_input = form.distance.data
+        mode_obj = TransportMode.query.get(form.mode.data)
+        user_obj = User.query.get(user_id)
+        new_trip = Trip(distance_km=distance_input, mode=mode_obj, user=user_obj)
+        recommendation_text = new_trip.calculate_score()
+        db.session.add(new_trip)
+        db.session.commit()
+        return render_template('result.html', trip=new_trip, recommendation=recommendation_text)
     return render_template('log_trip.html', form=form)
 
 
