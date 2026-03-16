@@ -6,16 +6,29 @@
 </head>
 <body style="font-family: Arial, sans-serif; padding: 20px;">
     <nav style="background: #333; padding: 10px; margin-bottom: 20px;">
-        <a href="{{ url_for('dashboard') }}" style="color: white; margin-right: 15px;">Dashboard</a>
-        <a href="{{ url_for('log_trip') }}" style="color: white; margin-right: 15px;">Log Trip</a>
-        <a href="{{ url_for('admin_panel') }}" style="color: white; margin-right: 15px;">Admin</a>
-        <a href="{{ url_for('logout') }}" style="color: white; float: right;">Logout</a>
+        <a href="{{ url_for('login') }}" style="color: white; margin-right: 15px;">Login</a>
+        <a href="{{ url_for('register') }}" style="color: white; margin-right: 15px;">Register</a>
+
+        {% if session.get('user_id') %}
+            <a href="{{ url_for('dashboard') }}" style="color: white; margin-right: 15px;">Dashboard</a>
+            <a href="{{ url_for('log_trip') }}" style="color: white; margin-right: 15px;">Log Trip</a>
+        {% endif %}
+
+        {% if session.get('admin_id') %}
+            <a href="{{ url_for('admin_panel') }}" style="color: white; margin-right: 15px;">Admin</a>
+        {% endif %}
+
+        {% if session.get('user_id') or session.get('admin_id') %}
+            <a href="{{ url_for('logout') }}" style="color: white; float: right;">Logout</a>
+        {% endif %}
     </nav>
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             {% for message in messages %}
-                <div style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">{{ message }}</div>
+                <div style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">
+                    {{ message }}
+                </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
