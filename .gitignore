@@ -12,3 +12,4 @@ ENV/
 # 忽略 Python 快取
 __pycache__/
 *.py[cod]
+.idea/
