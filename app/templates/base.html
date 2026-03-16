@@ -19,21 +19,23 @@
             <div class="brand">Carbon Catcher</div>
 
             <div class="nav-links">
-                <a class="nav-btn" href="{{ url_for('login') }}">Login</a>
-                <a class="nav-btn" href="{{ url_for('register') }}">Register</a>
+                {% if session.get('admin_id') %}
+                    <a class="nav-btn" href="{{ url_for('admin_panel') }}">Admin Panel</a>
+                    <a class="nav-btn" href="{{ url_for('logout') }}">Logout</a>
 
-                {% if session.get('user_id') %}
+                {% elif session.get('user_id') %}
+                    <a class="nav-btn" href="{{ url_for('profile') }}">Profile</a>
                     <a class="nav-btn" href="{{ url_for('wall_of_fame') }}">Wall of Fame</a>
                     <a class="nav-btn" href="{{ url_for('trip_history') }}">Trip History</a>
                     <a class="nav-btn" href="{{ url_for('log_trip') }}">Log Trip</a>
-                {% endif %}
-
-                {% if session.get('admin_id') %}
-                    <a class="nav-btn" href="{{ url_for('admin_panel') }}">Admin Panel</a>
-                {% endif %}
-
-                {% if session.get('user_id') or session.get('admin_id') %}
                     <a class="nav-btn" href="{{ url_for('logout') }}">Logout</a>
+
+                {% else %}
+                    {% if request.endpoint == 'register' %}
+                        <a class="nav-btn" href="{{ url_for('login') }}">Log In</a>
+                    {% else %}
+                        <a class="nav-btn" href="{{ url_for('register') }}">Register</a>
+                    {% endif %}
                 {% endif %}
 
                 <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">

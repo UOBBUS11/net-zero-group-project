@@ -416,3 +416,18 @@ tbody tr:hover {
         padding: 12px 9px;
     }
 }
+
+.grid {
+    display: grid;
+    gap: 18px;
+}
+
+.grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 800px) {
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}

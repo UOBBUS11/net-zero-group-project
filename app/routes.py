@@ -1,7 +1,14 @@
 from flask import render_template, flash, redirect, url_for, request, session
 from app import app, db
 from app.models import User, Trip, TransportMode, Administrator, SavedLocation
-from app.forms import LoginForm, RegisterForm, LogTripForm, EditRuleForm
+from app.forms import (
+    LoginForm,
+    RegisterForm,
+    LogTripForm,
+    EditRuleForm,
+    EditProfileForm,
+    ChangePasswordForm
+)
 
 
 def normalize_username(username):
@@ -466,6 +473,84 @@ def admin_panel():
         locations=locations,
         recent_trips=recent_trips,
         form=form
+    )
+
+
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        session.pop("user_id", None)
+        flash("Session expired. Please log in again.")
+        return redirect(url_for("login"))
+
+    trip_count = Trip.query.filter_by(user_id=user.id).count()
+    latest_trip = Trip.query.filter_by(user_id=user.id).order_by(Trip.timestamp.desc()).first()
+
+    edit_profile_form = EditProfileForm(prefix="profile")
+    change_password_form = ChangePasswordForm(prefix="password")
+
+    if request.method == "GET":
+        edit_profile_form.username.data = user.username
+
+    if request.method == "POST":
+        if edit_profile_form.submit.data:
+            if edit_profile_form.validate():
+                new_username = normalize_username(edit_profile_form.username.data)
+
+                if new_username.lower() == "admin":
+                    flash("The username 'admin' is reserved and cannot be used.")
+                else:
+                    existing_user = User.query.filter_by(username=new_username).first()
+                    if existing_user and existing_user.id != user.id:
+                        flash("That username is already taken.")
+                    else:
+                        user.username = new_username
+                        db.session.commit()
+                        flash("Username updated successfully.")
+                        return redirect(url_for("profile"))
+            else:
+                flash("Please correct the username form errors.")
+
+        elif change_password_form.submit.data:
+            if change_password_form.validate():
+                current_password = change_password_form.current_password.data
+                new_password = change_password_form.new_password.data
+
+                if not user.check_password(current_password):
+                    flash("Your current password is incorrect.")
+                elif current_password == new_password:
+                    flash("Your new password must be different from the current password.")
+                else:
+                    user.set_password(new_password)
+                    db.session.commit()
+                    flash("Password updated successfully.")
+                    return redirect(url_for("profile"))
+            else:
+                flash("Please correct the password form errors.")
+
+    # Developer note:
+    # If a future dashboard-summary feature is added, this profile route is the right place
+    # to assemble and render it so users see that summary after clicking the Profile tab.
+    # Example additions later:
+    # - total trips
+    # - average carbon per trip
+    # - recent achievements
+    # - weekly/monthly sustainability summary
+    # - streaks and milestone cards
+
+    return render_template(
+        "profile.html",
+        user=user,
+        trip_count=trip_count,
+        latest_trip=latest_trip,
+        edit_profile_form=edit_profile_form,
+        change_password_form=change_password_form,
+        achievement_badge=achievement_badge
     )
 
 

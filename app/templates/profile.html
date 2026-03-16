@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <div>
+        <h1>👤 Profile</h1>
+        <p class="muted">
+            Your account details, score, and personal overview.
+        </p>
+    </div>
+
+    <div class="card hero-score">
+        <div class="muted">Current average score</div>
+        <div class="score-big {% if user.current_score >= 7 %}score-good{% elif user.current_score >= 4 %}score-mid{% else %}score-bad{% endif %}">
+            {{ "%.1f"|format(user.current_score) }}/10
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-2">
+    <div class="card">
+        <h2>Profile Information</h2>
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        <p><strong>Total Trips Logged:</strong> {{ trip_count }}</p>
+        <p>
+            <strong>Achievement:</strong>
+            <span class="achievement-badge badge-level-{{ user.current_score|int }}">
+                {{ achievement_badge(user.current_score) }}
+            </span>
+        </p>
+
+        <div class="inline-actions" style="margin-top: 16px;">
+            <a href="{{ url_for('trip_history') }}" class="btn btn-secondary">View Trip History</a>
+            <a href="{{ url_for('log_trip') }}" class="btn">Log Trip</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Edit Username</h2>
+
+        <form method="POST">
+            {{ edit_profile_form.hidden_tag() }}
+
+            <div class="form-row">
+                <strong>{{ edit_profile_form.username.label }}</strong><br>
+                {{ edit_profile_form.username(placeholder="Enter new username") }}
+                {% for error in edit_profile_form.username.errors %}
+                    <div class="error-text">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="inline-actions">
+                {{ edit_profile_form.submit(class_="btn") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="max-width: 760px;">
+    <h2>Change Password</h2>
+
+    <form method="POST">
+        {{ change_password_form.hidden_tag() }}
+
+        <div class="form-row">
+            <strong>{{ change_password_form.current_password.label }}</strong><br>
+            {{ change_password_form.current_password(placeholder="Enter current password") }}
+            {% for error in change_password_form.current_password.errors %}
+                <div class="error-text">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-row">
+            <strong>{{ change_password_form.new_password.label }}</strong><br>
+            {{ change_password_form.new_password(placeholder="Enter new password") }}
+            {% for error in change_password_form.new_password.errors %}
+                <div class="error-text">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-row">
+            <strong>{{ change_password_form.confirm_new_password.label }}</strong><br>
+            {{ change_password_form.confirm_new_password(placeholder="Repeat new password") }}
+            {% for error in change_password_form.confirm_new_password.errors %}
+                <div class="error-text">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="inline-actions">
+            {{ change_password_form.submit(class_="btn btn-success") }}
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Latest Activity</h2>
+
+    {% if latest_trip %}
+        <p><strong>Location:</strong> {{ latest_trip.location }}</p>
+        <p><strong>Mode:</strong> {{ latest_trip.mode.mode_name }}</p>
+        <p><strong>Date:</strong> {{ latest_trip.timestamp.strftime("%Y-%m-%d %H:%M") }}</p>
+        <p>
+            <strong>Trip Score:</strong>
+            <span class="{% if latest_trip.score_earned >= 7 %}score-good{% elif latest_trip.score_earned >= 4 %}score-mid{% else %}score-bad{% endif %}">
+                {{ "%.1f"|format(latest_trip.score_earned) }}/10
+            </span>
+        </p>
+    {% else %}
+        <div class="notice">
+            No trips logged yet. Start by adding your first trip.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

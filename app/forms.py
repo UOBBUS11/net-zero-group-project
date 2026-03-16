@@ -53,3 +53,18 @@ class EditRuleForm(FlaskForm):
     base_points = FloatField('Base Score Weight', validators=[DataRequired()])
     points_per_km = FloatField('Distance Weight', validators=[DataRequired()])
     submit = SubmitField('Update Rule')
+
+
+class EditProfileForm(FlaskForm):
+    username = StringField('New Username', validators=[DataRequired(), Length(min=3, max=64)])
+    submit = SubmitField('Update Username')
+
+
+class ChangePasswordForm(FlaskForm):
+    current_password = PasswordField('Current Password', validators=[DataRequired(), Length(min=4, max=128)])
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=4, max=128)])
+    confirm_new_password = PasswordField(
+        'Confirm New Password',
+        validators=[DataRequired(), EqualTo('new_password', message='Passwords must match')]
+    )
+    submit = SubmitField('Change Password')
