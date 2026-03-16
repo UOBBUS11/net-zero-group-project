@@ -1,17 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>Login</h2>
+    <h2>Create Account</h2>
 
     <p>
-        Log in below. If you do not have an account yet,
-        <a href="{{ url_for('register') }}">create one here</a>.
-    </p>
-
-    <p>
-        <strong>Admin demo account:</strong>
-        username <code>admin</code>,
-        password <code>example123</code>
+        Already have an account?
+        <a href="{{ url_for('login') }}">Back to login</a>.
     </p>
 
     <hr>
@@ -21,7 +15,7 @@
 
         <p>
             <strong>{{ form.username.label }}</strong><br>
-            {{ form.username(placeholder="Enter username") }}
+            {{ form.username(placeholder="Choose username") }}
             {% for error in form.username.errors %}
                 <br><span style="color: red;">{{ error }}</span>
             {% endfor %}
@@ -29,14 +23,18 @@
 
         <p>
             <strong>{{ form.password.label }}</strong><br>
-            {{ form.password(placeholder="Enter password") }}
+            {{ form.password(placeholder="Choose password") }}
             {% for error in form.password.errors %}
                 <br><span style="color: red;">{{ error }}</span>
             {% endfor %}
         </p>
 
         <p>
-            {{ form.is_admin() }} {{ form.is_admin.label }}
+            <strong>{{ form.confirm_password.label }}</strong><br>
+            {{ form.confirm_password(placeholder="Repeat password") }}
+            {% for error in form.confirm_password.errors %}
+                <br><span style="color: red;">{{ error }}</span>
+            {% endfor %}
         </p>
 
         <p>{{ form.submit() }}</p>

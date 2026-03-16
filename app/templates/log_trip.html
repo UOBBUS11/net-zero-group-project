@@ -1,28 +1,48 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h2>Log a New Trip</h2>
-  <hr>
-
-  <form method="POST">
-    {{ form.hidden_tag() }}
-
-    <p>
-      <strong>{{ form.distance.label }}</strong><br>
-      {{ form.distance(placeholder="e.g. 5.5") }}
-      {% for error in form.distance.errors %}
-        <span style="color: red;">{{ error }}</span>
-      {% endfor %}
+<div class="card" style="max-width: 760px; margin: 0 auto;">
+    <h2>Log a New Trip</h2>
+    <p class="muted">
+        Score depends on transport type, distance, carbon emitted per km, practical suitability, and whether the trip enters an emission zone.
     </p>
 
-    <p>
-      <strong>{{ form.mode.label }}</strong><br>
-      {{ form.mode() }}
-      {% for error in form.mode.errors %}
-        <span style="color: red;">{{ error }}</span>
-      {% endfor %}
-    </p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
 
-    <p>{{ form.submit() }}</p>
-  </form>
+        <div class="form-row">
+            <strong>{{ form.distance.label }}</strong><br>
+            {{ form.distance(placeholder="e.g. 5.5") }}
+            {% for error in form.distance.errors %}
+                <div class="error-text">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-row">
+            <strong>{{ form.mode.label }}</strong><br>
+            {{ form.mode() }}
+            {% for error in form.mode.errors %}
+                <div class="error-text">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-row">
+            <strong>{{ form.location.label }}</strong><br>
+            {{ form.location(placeholder="e.g. Birmingham City Centre") }}
+            {% for error in form.location.errors %}
+                <div class="error-text">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="form-row checkbox-row">
+            {{ form.enters_emission_zone() }}
+            {{ form.enters_emission_zone.label }}
+        </div>
+
+        <div class="inline-actions">
+            {{ form.submit(class_="btn") }}
+            <a href="{{ url_for('wall_of_fame') }}" class="btn btn-secondary">Back to Wall of Fame</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

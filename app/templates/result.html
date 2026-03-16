@@ -1,29 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h2>Trip Logged Successfully! ✅</h2>
+<div class="card" style="max-width: 760px; margin: 0 auto;">
+    <h2>Trip Logged Successfully ✅</h2>
 
-    <div style="border: 1px solid #ccc; padding: 20px; border-radius: 8px; max-width: 500px;">
-        <h3>Trip Summary</h3>
-        <p><strong>Transport Mode:</strong> {{ trip.mode.mode_name }}</p>
-        <p><strong>Distance:</strong> {{ trip.distance_km }} km</p>
-        
-        <p><strong>Carbon Emission:</strong> {{ trip.carbon_emission }} kg CO2</p>
-        
-        <hr>
+    <h3>Trip Summary</h3>
+    <p><strong>Transport Mode:</strong> {{ trip.mode.mode_name }}</p>
+    <p><strong>Distance:</strong> {{ "%.1f"|format(trip.distance_km) }} km</p>
+    <p><strong>Location:</strong> {{ trip.location }}</p>
+    <p><strong>Entered Emission Zone:</strong> {{ 'Yes' if trip.entered_emission_zone else 'No' }}</p>
+    <p><strong>Carbon Emission:</strong> {{ "%.3f"|format(trip.carbon_emission) }} kg CO2</p>
 
-        <h3>Score Earned:</h3>
-        <h1 style="color: {{ 'green' if trip.score_earned >= 0 else 'red' }}; margin-top: 0;">
-            {{ '+' if trip.score_earned > 0 else '' }}{{ trip.score_earned }} Points
-        </h1>
+    <hr>
 
-        <div style="background-color: #f8f9fa; border-left: 5px solid {{ '#28a745' if trip.score_earned >= 0 else '#dc3545' }}; padding: 15px; margin-top: 20px;">
-            <strong>AI Recommendation:</strong>
-            <p style="margin: 5px 0 0 0;">{{ recommendation }}</p>
-        </div>
+    <h3>Score Earned</h3>
+    <div class="score-big {% if trip.score_earned >= 7 %}score-good{% elif trip.score_earned >= 4 %}score-mid{% else %}score-bad{% endif %}">
+        {{ "%.1f"|format(trip.score_earned) }}/10
     </div>
 
-    <br>
-    <a href="{{ url_for('dashboard') }}" style="margin-right: 15px;">Back to Dashboard</a>
-    <a href="{{ url_for('log_trip') }}">Log Another Trip</a>
+    <div class="notice" style="margin-top: 18px;">
+        <strong>Recommendation:</strong>
+        <p style="margin: 6px 0 0 0;">{{ recommendation }}</p>
+    </div>
+
+    <div class="card" style="margin-top: 18px; padding: 14px;">
+        <strong>Score Breakdown:</strong>
+        <p style="margin: 8px 0 0 0;">{{ trip.score_breakdown }}</p>
+    </div>
+
+    <div class="inline-actions" style="margin-top: 18px;">
+        <a href="{{ url_for('wall_of_fame') }}" class="btn btn-secondary">Back to Wall of Fame</a>
+        <a href="{{ url_for('trip_history') }}" class="btn btn-secondary">View Trip History</a>
+        <a href="{{ url_for('log_trip') }}" class="btn">Log Another Trip</a>
+    </div>
+</div>
 {% endblock %}
