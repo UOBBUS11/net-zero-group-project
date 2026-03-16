@@ -1,6 +1,13 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, FloatField, SelectField, IntegerField
-from wtforms.validators import DataRequired, NumberRange, Length, EqualTo
+from wtforms import (
+    StringField,
+    PasswordField,
+    BooleanField,
+    SubmitField,
+    FloatField,
+    SelectField
+)
+from wtforms.validators import DataRequired, NumberRange, Length, EqualTo, Optional
 
 
 class LoginForm(FlaskForm):
@@ -25,14 +32,24 @@ class LogTripForm(FlaskForm):
         'Distance (km)',
         validators=[
             DataRequired(),
-            NumberRange(min=0.1, message="Distance must be positive")
+            NumberRange(min=0.1, message='Distance must be positive')
         ]
     )
+
+    location = StringField(
+        'Location',
+        validators=[DataRequired(), Length(min=2, max=120)]
+    )
+
     mode = SelectField('Transport Mode', coerce=int, validators=[DataRequired()])
-    submit = SubmitField('Calculate & Submit')
+
+    enters_emission_zone = BooleanField('This location is in an emission zone')
+    submit = SubmitField('Log Trip')
 
 
 class EditRuleForm(FlaskForm):
-    base_points = IntegerField('Base Points', validators=[DataRequired()])
-    points_per_km = IntegerField('Points per Km', validators=[DataRequired()])
+    mode_id = SelectField('Transport Mode', coerce=int, validators=[DataRequired()])
+    emission_factor = FloatField('Emission Factor (kg CO2 per km)', validators=[DataRequired()])
+    base_points = FloatField('Base Score Weight', validators=[DataRequired()])
+    points_per_km = FloatField('Distance Weight', validators=[DataRequired()])
     submit = SubmitField('Update Rule')

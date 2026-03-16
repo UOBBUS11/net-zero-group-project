@@ -2,37 +2,67 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Eco-Transport System</title>
+    <title>Carbon Catcher</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body style="font-family: Arial, sans-serif; padding: 20px;">
-    <nav style="background: #333; padding: 10px; margin-bottom: 20px;">
-        <a href="{{ url_for('login') }}" style="color: white; margin-right: 15px;">Login</a>
-        <a href="{{ url_for('register') }}" style="color: white; margin-right: 15px;">Register</a>
+<body>
+    <script>
+        const storedTheme = localStorage.getItem('carboncatcher-theme') || 'dark';
+        if (storedTheme === 'light') {
+            document.body.classList.add('light');
+        }
+    </script>
 
-        {% if session.get('user_id') %}
-            <a href="{{ url_for('dashboard') }}" style="color: white; margin-right: 15px;">Dashboard</a>
-            <a href="{{ url_for('log_trip') }}" style="color: white; margin-right: 15px;">Log Trip</a>
-        {% endif %}
+    <nav class="nav">
+        <div class="nav-inner">
+            <div class="brand">Carbon Catcher</div>
 
-        {% if session.get('admin_id') %}
-            <a href="{{ url_for('admin_panel') }}" style="color: white; margin-right: 15px;">Admin</a>
-        {% endif %}
+            <div class="nav-links">
+                <a class="nav-btn" href="{{ url_for('login') }}">Login</a>
+                <a class="nav-btn" href="{{ url_for('register') }}">Register</a>
 
-        {% if session.get('user_id') or session.get('admin_id') %}
-            <a href="{{ url_for('logout') }}" style="color: white; float: right;">Logout</a>
-        {% endif %}
+                {% if session.get('user_id') %}
+                    <a class="nav-btn" href="{{ url_for('wall_of_fame') }}">Wall of Fame</a>
+                    <a class="nav-btn" href="{{ url_for('trip_history') }}">Trip History</a>
+                    <a class="nav-btn" href="{{ url_for('log_trip') }}">Log Trip</a>
+                {% endif %}
+
+                {% if session.get('admin_id') %}
+                    <a class="nav-btn" href="{{ url_for('admin_panel') }}">Admin Panel</a>
+                {% endif %}
+
+                {% if session.get('user_id') or session.get('admin_id') %}
+                    <a class="nav-btn" href="{{ url_for('logout') }}">Logout</a>
+                {% endif %}
+
+                <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+                    <span id="theme-icon">◐</span>
+                </button>
+            </div>
+        </div>
     </nav>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-                <div style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    {% block content %}{% endblock %}
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+        function toggleTheme() {
+            document.body.classList.toggle('light');
+            localStorage.setItem(
+                'carboncatcher-theme',
+                document.body.classList.contains('light') ? 'light' : 'dark'
+            );
+        }
+    </script>
 </body>
 </html>

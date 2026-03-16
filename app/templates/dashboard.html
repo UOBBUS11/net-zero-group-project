@@ -1,33 +1,78 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Welcome, {{ user.username if user else 'Guest' }}!</h1>
+<div class="hero">
+    <div>
+        <h1>🏆 Wall of Fame</h1>
+        <p class="muted">
+            Highest average score wins. Every user earns a visible achievement badge based on their current score.
+        </p>
+    </div>
 
-    <p>Your Current Score: <strong>{{ user.current_score if user else 0 }}</strong> Points</p>
+    <div class="card hero-score">
+        <div class="muted">Your current standing</div>
+        <div class="score-big {% if user.current_score >= 7 %}score-good{% elif user.current_score >= 4 %}score-mid{% else %}score-bad{% endif %}">
+            {{ "%.1f"|format(user.current_score) }}/10
+        </div>
+        <div class="pill">Rank #{{ your_rank }} of {{ total_users }}</div>
+        <div class="achievement-badge badge-level-{{ your_badge_level }}">{{ your_badge }}</div>
+    </div>
+</div>
 
-    <p><a href="{{ url_for('log_trip') }}">Log a New Trip</a></p>
+<div class="card">
+    <div class="section-title-row">
+        <h2>Leaderboard</h2>
+        <span class="muted">Sorted by highest score first</span>
+    </div>
 
-    <hr>
-
-    <h3>Leaderboard</h3>
-    <table border="1" style="width: 60%; text-align: left; border-collapse: collapse;">
+    <table class="leaderboard-table">
         <thead>
             <tr>
-                <th style="padding: 8px;">Rank</th>
-                <th style="padding: 8px;">User</th>
-                <th style="padding: 8px;">Score</th>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Achievement</th>
+                <th>Title</th>
+                <th>Score</th>
             </tr>
         </thead>
         <tbody>
-            {% for u in leaderboard %}
-            <tr {% if user and u.id == user.id %}style="font-weight: bold; background-color: #f5fff5;"{% endif %}>
-                <td style="padding: 8px;">{{ loop.index }}</td>
-                <td style="padding: 8px;">
-                    {{ u.username }} {% if user and u.id == user.id %}(You){% endif %}
+            {% for entry in leaderboard %}
+            <tr class="{% if entry.is_you %}table-highlight{% endif %}">
+                <td class="
+                    {% if entry.rank == 1 %}rank-1{% elif entry.rank == 2 %}rank-2{% elif entry.rank == 3 %}rank-3{% endif %}
+                ">
+                    {% if entry.rank == 1 %}
+                        🥇 #1
+                    {% elif entry.rank == 2 %}
+                        🥈 #2
+                    {% elif entry.rank == 3 %}
+                        🥉 #3
+                    {% else %}
+                        #{{ entry.rank }}
+                    {% endif %}
                 </td>
-                <td style="padding: 8px;">{{ u.current_score }}</td>
+
+                <td>
+                    <strong>{{ entry.user.username }}</strong>
+                    {% if entry.is_you %}
+                        <span class="pill">You</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <span class="achievement-badge badge-level-{{ entry.badge_level }}">
+                        {{ entry.badge }}
+                    </span>
+                </td>
+
+                <td>{{ entry.title }}</td>
+
+                <td>
+                    <strong>{{ "%.1f"|format(entry.user.current_score) }}/10</strong>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+</div>
 {% endblock %}
