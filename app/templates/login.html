@@ -16,7 +16,7 @@
 
     <hr>
 
-    <form method="POST" style="max-width: 420px;">
+    <form method="POST" action="{{ url_for('login') }}" style="max-width: 420px;">
         {{ form.hidden_tag() }}
 
         <p>

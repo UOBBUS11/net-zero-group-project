@@ -1,4 +1,5 @@
 from flask import render_template, flash, redirect, url_for, request, session
+from datetime import datetime, timedelta
 from app import app, db
 from app.models import User, Trip, TransportMode, Administrator, SavedLocation
 from app.forms import (
@@ -179,7 +180,7 @@ def calculate_trip_score(distance, mode, location, enters_emission_zone):
     return carbon, score, " | ".join(breakdown), zone_name
 
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
 def login():
     create_default_data()
@@ -210,7 +211,7 @@ def login():
             session.clear()
             session["user_id"] = user.id
             flash(f"Welcome back, {user.username}.")
-            return redirect(url_for("wall_of_fame"))
+            return redirect(url_for("profile"))
 
         flash("Invalid username or password.")
         return render_template("login.html", title="Login", form=form)
@@ -488,8 +489,70 @@ def profile():
         flash("Session expired. Please log in again.")
         return redirect(url_for("login"))
 
-    trip_count = Trip.query.filter_by(user_id=user.id).count()
-    latest_trip = Trip.query.filter_by(user_id=user.id).order_by(Trip.timestamp.desc()).first()
+    history_query = Trip.query.filter_by(user_id=user.id).join(TransportMode)
+
+    search_date = (request.args.get("date") or "").strip()
+    search_location = (request.args.get("location") or "").strip()
+    search_mode = (request.args.get("mode") or "").strip()
+
+    if search_date:
+        history_query = history_query.filter(db.func.date(Trip.timestamp) == search_date)
+
+    if search_location:
+        history_query = history_query.filter(Trip.location.ilike(f"%{search_location}%"))
+
+    if search_mode:
+        history_query = history_query.filter(TransportMode.mode_name == search_mode)
+
+    history = history_query.order_by(Trip.timestamp.desc()).all()
+    all_modes = TransportMode.query.order_by(TransportMode.mode_name.asc()).all()
+
+    trip_count = len(history)
+    latest_trip = history[0] if history else None
+    total_emissions = round(sum(trip.carbon_emission for trip in history), 3)
+    average_emissions = round(total_emissions / trip_count, 3) if trip_count > 0 else 0
+
+    mode_counts = {}
+    for trip in history:
+        mode_name = trip.mode.mode_name
+        mode_counts[mode_name] = mode_counts.get(mode_name, 0) + 1
+
+    most_used_transport = max(mode_counts, key=mode_counts.get) if mode_counts else "None"
+
+    lower_carbon_modes = {
+        "Walking",
+        "Bicycle",
+        "Electric Bicycle",
+        "Train",
+        "Bus",
+        "Electric Motorbike",
+        "Electric Car"
+    }
+    lower_carbon_trips = sum(1 for trip in history if trip.mode.mode_name in lower_carbon_modes)
+
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    weekly_trips = Trip.query.filter(
+        Trip.user_id == user.id,
+        Trip.timestamp >= week_ago
+    ).all()
+
+    weekly_target = 10.0
+    weekly_emissions = round(sum(trip.carbon_emission for trip in weekly_trips), 3)
+    progress_percent = round((weekly_emissions / weekly_target) * 100, 1) if weekly_target > 0 else 0
+    progress_percent_capped = min(progress_percent, 100)
+
+    if weekly_emissions <= weekly_target * 0.5:
+        impact_level = "Low impact"
+        impact_class = "impact-low"
+    elif weekly_emissions <= weekly_target * 0.85:
+        impact_level = "Moderate impact"
+        impact_class = "impact-medium"
+    elif weekly_emissions <= weekly_target:
+        impact_level = "High impact"
+        impact_class = "impact-high"
+    else:
+        impact_level = "Target exceeded"
+        impact_class = "impact-exceeded"
 
     edit_profile_form = EditProfileForm(prefix="profile")
     change_password_form = ChangePasswordForm(prefix="password")
@@ -548,6 +611,21 @@ def profile():
         user=user,
         trip_count=trip_count,
         latest_trip=latest_trip,
+        total_emissions=total_emissions,
+        average_emissions=average_emissions,
+        most_used_transport=most_used_transport,
+        lower_carbon_trips=lower_carbon_trips,
+        weekly_target=weekly_target,
+        weekly_emissions=weekly_emissions,
+        progress_percent=progress_percent,
+        progress_percent_capped=progress_percent_capped,
+        impact_level=impact_level,
+        impact_class=impact_class,
+        history=history,
+        all_modes=all_modes,
+        search_date=search_date,
+        search_location=search_location,
+        search_mode=search_mode,
         edit_profile_form=edit_profile_form,
         change_password_form=change_password_form,
         achievement_badge=achievement_badge
