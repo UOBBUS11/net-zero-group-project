@@ -431,3 +431,38 @@ tbody tr:hover {
         grid-template-columns: 1fr;
     }
 }
+
+.target-card {
+    margin-bottom: 24px;
+}
+
+.target-bar {
+    width: 100%;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    margin: 14px 0;
+}
+
+.target-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+.target-bar-fill.impact-low {
+    background: #22c55e;
+}
+
+.target-bar-fill.impact-medium {
+    background: #eab308;
+}
+
+.target-bar-fill.impact-high {
+    background: #f97316;
+}
+
+.target-bar-fill.impact-exceeded {
+    background: #ef4444;
+}
