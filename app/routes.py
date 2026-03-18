@@ -1,5 +1,7 @@
-from flask import render_template, flash, redirect, url_for, request, session
+from flask import render_template, flash, redirect, url_for, request, session, jsonify, current_app
 from datetime import datetime, timedelta
+import os
+import requests as http_requests
 from app import app, db
 from app.models import User, Trip, TransportMode, Administrator, SavedLocation
 from app.forms import (
@@ -637,3 +639,95 @@ def logout():
     session.clear()
     flash("You have been logged out.")
     return redirect(url_for("login"))
+
+
+# ── Navigate ──────────────────────────────────────────────────────────────────
+
+# CO2 emission factors (kg per km)
+_NAV_CO2 = {
+    "car":             0.170,
+    "pedestrian":      0.000,
+    "publicTransport": 0.089,
+}
+
+_NAV_LABELS = {
+    "car":             "Car",
+    "pedestrian":      "Walking",
+    "publicTransport": "Public Transport",
+}
+
+
+def _fmt_nav_duration(seconds):
+    seconds = int(seconds)
+    h, m = divmod(seconds // 60, 60)
+    if h:
+        return f"{h}h {m}m"
+    return f"{m}m"
+
+
+@app.route("/navigate", methods=["GET"])
+def navigate():
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        session.pop("user_id", None)
+        flash("Session expired. Please log in again.")
+        return redirect(url_for("login"))
+
+    here_api_key = current_app.config.get("HERE_API_KEY", "")
+    return render_template("navigate.html", user=user, here_api_key=here_api_key)
+
+
+@app.route("/navigate/route", methods=["POST"])
+def navigate_route():
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.get_json(force=True)
+    origin      = data.get("origin", "")
+    destination = data.get("destination", "")
+
+    if not origin or not destination:
+        return jsonify({"error": "Origin and destination are required"}), 400
+
+    api_key = current_app.config.get("HERE_API_KEY", "")
+    results = {}
+
+    for mode in ("car", "pedestrian", "publicTransport"):
+        try:
+            resp = http_requests.get(
+                "https://router.hereapi.com/v8/routes",
+                params={
+                    "transportMode": mode,
+                    "origin":        origin,
+                    "destination":   destination,
+                    "return":        "polyline,summary",
+                    "apikey":        api_key,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            route_data = resp.json()
+
+            section  = route_data["routes"][0]["sections"][0]
+            dist_km  = round(section["summary"]["length"] / 1000, 1)
+            dur_s    = section["summary"]["duration"]
+            co2_kg   = round(dist_km * _NAV_CO2[mode], 2)
+            polyline = section.get("polyline", "")
+
+            results[mode] = {
+                "available":   True,
+                "label":       _NAV_LABELS[mode],
+                "distance_km": dist_km,
+                "duration":    _fmt_nav_duration(dur_s),
+                "duration_s":  dur_s,
+                "co2_kg":      co2_kg,
+                "polyline":    polyline,
+            }
+        except Exception:
+            results[mode] = {"available": False, "label": _NAV_LABELS[mode]}
+
+    return jsonify(results)
