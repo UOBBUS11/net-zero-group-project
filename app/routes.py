@@ -731,3 +731,5 @@ def navigate_route():
             results[mode] = {"available": False, "label": _NAV_LABELS[mode]}
 
     return jsonify(results)
+
+# note: navigating github issues
