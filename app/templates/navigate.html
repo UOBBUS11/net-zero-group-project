@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* ── Autocomplete dropdown ── */
+    .autocomplete-wrap { position: relative; }
+
+    .autocomplete-list {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0; right: 0;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        z-index: 100;
+        overflow: hidden;
+        box-shadow: 0 8px 24px var(--shadow);
+    }
+
+    .autocomplete-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        font-size: 0.92rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        transition: background 0.12s;
+    }
+
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover { background: var(--panel-2); }
+
+    /* ── Mode tabs ── */
+    .mode-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .mode-tab {
+        padding: 9px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: border-color 0.15s, background 0.15s;
+        width: auto;
+    }
+
+    .mode-tab:hover { border-color: var(--accent); }
+
+    .mode-tab.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    .mode-tab.unavailable {
+        opacity: 0.35;
+        cursor: not-allowed;
+    }
+
+    /* ── Map container ── */
+    #map {
+        width: 100%;
+        height: 450px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    /* ── Mode cards ── */
+    .nav-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+    }
+
+    .nav-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 4px 16px var(--shadow);
+        border-left: 4px solid var(--border);
+        transition: border-left-color 0.2s;
+        cursor: pointer;
+    }
+
+    .nav-card:hover { border-left-color: var(--accent); }
+    .nav-card.active-card { box-shadow: 0 0 0 2px var(--accent); }
+
+    .nav-card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .nav-card-icon { font-size: 1.8rem; }
+
+    .nav-stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .nav-stat .label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--muted);
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+
+    .nav-stat .value {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .co2-full { grid-column: 1 / -1; }
+
+    .co2-bar-wrap {
+        margin-top: 6px;
+        height: 5px;
+        background: var(--panel-2);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .co2-bar { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+    /* ── Loading state ── */
+    .loading-spinner {
+        display: inline-block;
+        width: 16px; height: 16px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        vertical-align: middle;
+        margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Best badges ── */
+    .best-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .best-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 0.85rem;
+    }
+</style>
+
+<!-- Page header -->
+<div class="hero">
+    <div>
+        <h1>🗺 Navigate</h1>
+        <p class="muted">Get directions and compare the CO₂ impact of different transport modes</p>
+    </div>
+</div>
+
+<!-- Search card -->
+<div class="card">
+    <div class="grid grid-2">
+        <div class="form-row">
+            <label for="origin-input">Start</label>
+            <div class="autocomplete-wrap">
+                <input type="text" id="origin-input"
+                       placeholder="e.g. Euston Station, London"
+                       autocomplete="off">
+                <input type="hidden" id="origin-lat">
+                <input type="hidden" id="origin-lng">
+                <div id="origin-suggestions" class="autocomplete-list" style="display:none"></div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label for="dest-input">Destination</label>
+            <div class="autocomplete-wrap">
+                <input type="text" id="dest-input"
+                       placeholder="e.g. Manchester Piccadilly"
+                       autocomplete="off">
+                <input type="hidden" id="dest-lat">
+                <input type="hidden" id="dest-lng">
+                <div id="dest-suggestions" class="autocomplete-list" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top:10px">
+        <button id="directions-btn" onclick="getDirections()">Get Directions</button>
+    </div>
+
+    <p id="error-msg" class="error-text" style="display:none"></p>
+</div>
+
+<!-- Map (hidden until a route is loaded) -->
+<div id="map-section" style="display:none" class="card" style="padding:0; overflow:hidden;">
+    <div id="map"></div>
+</div>
+
+<!-- Mode tabs + result cards (hidden until route is loaded) -->
+<div id="results-section" style="display:none">
+    <div class="mode-tabs" id="mode-tabs">
+        <button class="mode-tab" id="tab-car"             onclick="switchMode('car')">🚗 Car</button>
+        <button class="mode-tab" id="tab-pedestrian"      onclick="switchMode('pedestrian')">🚶 Walking</button>
+        <button class="mode-tab" id="tab-publicTransport" onclick="switchMode('publicTransport')">🚌 Public Transport</button>
+    </div>
+
+    <div id="best-row" class="best-row"></div>
+
+    <div class="nav-cards" id="nav-cards"></div>
+</div>
+
+<!-- HERE Maps JS API -->
+<link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css">
+<script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+<script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+
+<script>
+const HERE_API_KEY = {{ here_api_key | tojson }};
+
+// ── Mode config ──────────────────────────────────────────────────────────────
+const MODE_CFG = {
+    car            : { label: 'Car',              icon: '🚗', color: '#f85149' },
+    pedestrian     : { label: 'Walking',          icon: '🚶', color: '#3fb950' },
+    publicTransport: { label: 'Public Transport', icon: '🚌', color: '#2f81f7' },
+};
+
+// ── Map state ────────────────────────────────────────────────────────────────
+let map, platform, ui, behavior;
+let mapObjects = [];
+let currentRoutes = {};
+let mapInitialised = false;
+
+// ── Autocomplete ─────────────────────────────────────────────────────────────
+let debounce;
+
+function setupAutocomplete(inputId, listId, latId, lngId) {
+    const input = document.getElementById(inputId);
+    const list  = document.getElementById(listId);
+
+    input.addEventListener('input', () => {
+        clearTimeout(debounce);
+        const q = input.value.trim();
+        if (q.length < 4) { list.style.display = 'none'; return; }
+
+        debounce = setTimeout(async () => {
+            try {
+                const resp = await fetch(
+                    `https://autosuggest.search.hereapi.com/v1/autosuggest` +
+                    `?q=${encodeURIComponent(q)}&at=54.0,-2.0&in=countryCode:GBR&limit=5&apikey=${HERE_API_KEY}`
+                );
+                const data = await resp.json();
+                const items = (data.items || []).filter(i => i.position);
+
+                list.innerHTML = '';
+                if (!items.length) { list.style.display = 'none'; return; }
+
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.textContent = item.address ? item.address.label : item.title;
+                    div.onclick = () => {
+                        input.value = item.address ? item.address.label : item.title;
+                        document.getElementById(latId).value = item.position.lat;
+                        document.getElementById(lngId).value = item.position.lng;
+                        list.style.display = 'none';
+                    };
+                    list.appendChild(div);
+                });
+                list.style.display = 'block';
+            } catch (e) {
+                console.error('Autocomplete error:', e);
+            }
+        }, 500);
+    });
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            list.style.display = 'none';
+        }
+    });
+}
+
+// ── Map initialisation ───────────────────────────────────────────────────────
+function initMap() {
+    if (mapInitialised) return;
+    mapInitialised = true;
+
+    platform = new H.service.Platform({ apikey: HERE_API_KEY });
+    const layers = platform.createDefaultLayers();
+
+    map = new H.Map(
+        document.getElementById('map'),
+        layers.vector.normal.map,
+        { zoom: 6, center: { lat: 54.0, lng: -2.0 } }
+    );
+
+    behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+    ui = H.ui.UI.createDefault(map, layers);
+
+    window.addEventListener('resize', () => map.getViewPort().resize());
+}
+
+// ── Get directions ───────────────────────────────────────────────────────────
+async function getDirections() {
+    const originLat = document.getElementById('origin-lat').value;
+    const originLng = document.getElementById('origin-lng').value;
+    const destLat   = document.getElementById('dest-lat').value;
+    const destLng   = document.getElementById('dest-lng').value;
+    const errMsg    = document.getElementById('error-msg');
+
+    errMsg.style.display = 'none';
+
+    if (!originLat || !originLng || !destLat || !destLng) {
+        errMsg.textContent = 'Please select locations from the dropdown suggestions.';
+        errMsg.style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('directions-btn');
+    btn.innerHTML = '<span class="loading-spinner"></span> Loading…';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch('/navigate/route', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({
+                origin     : `${originLat},${originLng}`,
+                destination: `${destLat},${destLng}`,
+            }),
+        });
+
+        if (!resp.ok) throw new Error('Server error');
+        currentRoutes = await resp.json();
+    } catch (e) {
+        errMsg.textContent = 'Could not fetch route data. Please check your API key and try again.';
+        errMsg.style.display = 'block';
+        btn.textContent = 'Get Directions';
+        btn.disabled = false;
+        return;
+    }
+
+    btn.textContent = 'Get Directions';
+    btn.disabled = false;
+
+    // Show map + results
+    document.getElementById('map-section').style.display = 'block';
+    document.getElementById('results-section').style.display = 'block';
+
+    initMap();
+    renderCards();
+
+    // Default to first available mode
+    const firstAvail = ['car', 'pedestrian', 'publicTransport']
+        .find(k => currentRoutes[k] && currentRoutes[k].available);
+    if (firstAvail) switchMode(firstAvail);
+}
+
+// ── Render result cards ───────────────────────────────────────────────────────
+function renderCards() {
+    const container = document.getElementById('nav-cards');
+    const bestRow   = document.getElementById('best-row');
+    container.innerHTML = '';
+    bestRow.innerHTML   = '';
+
+    const available = Object.entries(currentRoutes).filter(([, r]) => r.available);
+    const maxCo2    = Math.max(...available.map(([, r]) => r.co2_kg), 0.001);
+
+    // Best chips
+    if (available.length) {
+        const greenest = available.reduce((a, b) => a[1].co2_kg <= b[1].co2_kg ? a : b);
+        const fastest  = available.reduce((a, b) => a[1].duration_s <= b[1].duration_s ? a : b);
+
+        bestRow.innerHTML = `
+            <div class="best-chip">🌿 Greenest: ${MODE_CFG[greenest[0]].icon} ${greenest[1].label} — ${greenest[1].co2_kg} kg CO₂</div>
+            <div class="best-chip">⚡ Fastest: ${MODE_CFG[fastest[0]].icon} ${fastest[1].label} — ${fastest[1].duration}</div>
+        `;
+    }
+
+    // Cards
+    for (const [key, route] of Object.entries(currentRoutes)) {
+        const cfg  = MODE_CFG[key];
+        const card = document.createElement('div');
+        card.className = 'nav-card';
+        card.id = `card-${key}`;
+        card.style.borderLeftColor = cfg.color;
+        card.onclick = () => switchMode(key);
+
+        if (!route.available) {
+            card.innerHTML = `
+                <div class="nav-card-header">
+                    <span class="nav-card-icon">${cfg.icon}</span>
+                    <strong>${cfg.label}</strong>
+                </div>
+                <span class="muted tiny">Route unavailable for this mode.</span>
+            `;
+        } else {
+            const co2Class  = route.co2_kg === 0 ? 'score-good'
+                            : route.co2_kg < 3   ? 'score-mid'
+                            : 'score-bad';
+            const barWidth  = Math.max((route.co2_kg / maxCo2) * 100, 4).toFixed(0);
+
+            card.innerHTML = `
+                <div class="nav-card-header">
+                    <span class="nav-card-icon">${cfg.icon}</span>
+                    <strong style="font-size:1.05rem">${cfg.label}</strong>
+                </div>
+                <div class="nav-stat-grid">
+                    <div class="nav-stat">
+                        <div class="label">Distance</div>
+                        <div class="value">${route.distance_km} km</div>
+                    </div>
+                    <div class="nav-stat">
+                        <div class="label">Duration</div>
+                        <div class="value">${route.duration}</div>
+                    </div>
+                    <div class="nav-stat co2-full">
+                        <div class="label">CO₂ Emitted</div>
+                        <div class="value ${co2Class}" style="font-size:1.2rem">${route.co2_kg} kg</div>
+                        <div class="co2-bar-wrap">
+                            <div class="co2-bar" style="width:${barWidth}%; background:${cfg.color}"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        container.appendChild(card);
+    }
+}
+
+// ── Switch active mode on map ────────────────────────────────────────────────
+function switchMode(modeKey) {
+    const route = currentRoutes[modeKey];
+    if (!route || !route.available) return;
+
+    // Update tabs
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    const tab = document.getElementById(`tab-${modeKey}`);
+    if (tab) tab.classList.add('active');
+
+    // Highlight card
+    document.querySelectorAll('.nav-card').forEach(c => c.classList.remove('active-card'));
+    const card = document.getElementById(`card-${modeKey}`);
+    if (card) card.classList.add('active-card');
+
+    // Draw route on map
+    mapObjects.forEach(o => map.removeObject(o));
+    mapObjects = [];
+
+    if (!route.polyline) return;
+
+    try {
+        const cfg        = MODE_CFG[modeKey];
+        const linestring = H.geo.LineString.fromFlexiblePolyline(route.polyline);
+
+        const routeLine = new H.map.Polyline(linestring, {
+            style: {
+                strokeColor: cfg.color,
+                lineWidth  : 6,
+                lineDash   : modeKey === 'pedestrian' ? [8, 6] : [],
+            },
+        });
+
+        // Start / end markers
+        const startMarker = new H.map.Marker(linestring.extractPoint(0));
+        const endMarker   = new H.map.Marker(linestring.extractPoint(linestring.getPointCount() - 1));
+
+        mapObjects = [routeLine, startMarker, endMarker];
+        map.addObjects(mapObjects);
+        map.getViewModel().setLookAtData({ bounds: routeLine.getBoundingBox(), padding: 50 });
+    } catch (e) {
+        console.error('Map render error:', e);
+    }
+}
+
+// ── Initialise autocomplete on page load ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    setupAutocomplete('origin-input', 'origin-suggestions', 'origin-lat', 'origin-lng');
+    setupAutocomplete('dest-input',   'dest-suggestions',   'dest-lat',   'dest-lng');
+});
+</script>
+{% endblock %}

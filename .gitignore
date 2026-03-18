@@ -13,3 +13,6 @@ ENV/
 __pycache__/
 *.py[cod]
 .idea/
+
+# 忽略環境變數 (API keys)
+.env
