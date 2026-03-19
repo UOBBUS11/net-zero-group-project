@@ -3,196 +3,22 @@
 {% block content %}
 <div class="hero">
     <div>
-        <h1>👤 Profile Dashboard</h1>
+        <h1>👤 Profile Settings</h1>
         <p class="muted">
-            Track your trips, emissions, and account details in one place.
-        </p>
-    </div>
-
-    <div class="card hero-score">
-        <div class="muted">Current average score</div>
-        <div class="score-big {% if user.current_score >= 7 %}score-good{% elif user.current_score >= 4 %}score-mid{% else %}score-bad{% endif %}">
-            {{ "%.1f"|format(user.current_score) }}/10
-        </div>
-    </div>
-</div>
-
-<div class="card target-card">
-    <h2>Weekly Carbon Target</h2>
-    <p>
-        <strong>{{ "%.3f"|format(weekly_emissions) }} / {{ "%.1f"|format(weekly_target) }} kg CO2</strong>
-    </p>
-
-    <div class="target-bar">
-        <div
-            class="target-bar-fill {{ impact_class }}"
-            style="width: {{ progress_percent_capped }}%;"
-        ></div>
-    </div>
-
-    <p><strong>Status:</strong> {{ impact_level }}</p>
-    <p class="muted">{{ "%.1f"|format(progress_percent) }}% of your weekly target used</p>
-</div>
-
-<div class="grid grid-2">
-    <div class="card">
-        <h2>Total Trips</h2>
-        <p><strong>{{ trip_count }}</strong></p>
-    </div>
-
-    <div class="card">
-        <h2>Total Emissions</h2>
-        <p><strong>{{ "%.3f"|format(total_emissions) }} kg CO2</strong></p>
-    </div>
-
-    <div class="card">
-        <h2>Average Emissions</h2>
-        <p><strong>{{ "%.3f"|format(average_emissions) }} kg per trip</strong></p>
-    </div>
-
-    <div class="card">
-        <h2>Most Used Transport</h2>
-        <p><strong>{{ most_used_transport }}</strong></p>
-    </div>
-
-    <div class="card">
-        <h2>Lower-Carbon Trips</h2>
-        <p><strong>{{ lower_carbon_trips }}</strong></p>
-    </div>
-
-    <div class="card">
-        <h2>Achievement</h2>
-        <p>
-            <span class="achievement-badge badge-level-{{ user.current_score|int }}">
-                {{ achievement_badge(user.current_score) }}
-            </span>
+            Manage your account details and security settings.
         </p>
     </div>
 </div>
 
-<div class="card">
-    <h2>Filter Journey History</h2>
-
-    <form method="GET" action="{{ url_for('profile') }}">
-        <div class="grid grid-2">
-            <div class="form-row">
-                <label for="date"><strong>Date</strong></label><br>
-                <input type="date" id="date" name="date" value="{{ search_date }}">
-            </div>
-
-            <div class="form-row">
-                <label for="location"><strong>Location</strong></label><br>
-                <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value="{{ search_location }}"
-                    placeholder="Search by location"
-                >
-            </div>
-
-            <div class="form-row">
-                <label for="mode"><strong>Transport Mode</strong></label><br>
-                <select id="mode" name="mode">
-                    <option value="">All modes</option>
-                    {% for mode in all_modes %}
-                        {% if search_mode == mode.mode_name %}
-                            <option value="{{ mode.mode_name }}" selected>{{ mode.mode_name }}</option>
-                        {% else %}
-                            <option value="{{ mode.mode_name }}">{{ mode.mode_name }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-
-        <div class="inline-actions" style="margin-top: 16px;">
-            <button type="submit" class="btn">Apply Filters</button>
-            <a href="{{ url_for('profile') }}" class="btn btn-secondary">Clear Filters</a>
-            <a href="{{ url_for('log_trip') }}" class="btn btn-success">Log Trip</a>
-        </div>
-    </form>
-</div>
-
-<div class="card">
-    <h2>Journey History</h2>
-
-    {% if history %}
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left; padding: 10px;">Date</th>
-                        <th style="text-align: left; padding: 10px;">Location</th>
-                        <th style="text-align: left; padding: 10px;">Mode</th>
-                        <th style="text-align: left; padding: 10px;">Distance</th>
-                        <th style="text-align: left; padding: 10px;">CO2</th>
-                        <th style="text-align: left; padding: 10px;">Score</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for trip in history %}
-                        <tr>
-                            <td style="padding: 10px;">{{ trip.timestamp.strftime("%Y-%m-%d %H:%M") }}</td>
-                            <td style="padding: 10px;">{{ trip.location }}</td>
-                            <td style="padding: 10px;">{{ trip.mode.mode_name }}</td>
-                            <td style="padding: 10px;">{{ "%.1f"|format(trip.distance_km) }} km</td>
-                            <td style="padding: 10px;">{{ "%.3f"|format(trip.carbon_emission) }} kg</td>
-                            <td style="padding: 10px;">
-                                <span class="{% if trip.score_earned >= 7 %}score-good{% elif trip.score_earned >= 4 %}score-mid{% else %}score-bad{% endif %}">
-                                    {{ "%.1f"|format(trip.score_earned) }}/10
-                                </span>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <div class="notice">
-            No trips match your filters yet. Log your first trip to start building your dashboard.
-        </div>
-    {% endif %}
-</div>
-
 <div class="grid grid-2">
-    <div class="card">
-        <h2>Latest Activity</h2>
-
-        {% if latest_trip %}
-            <p><strong>Location:</strong> {{ latest_trip.location }}</p>
-            <p><strong>Mode:</strong> {{ latest_trip.mode.mode_name }}</p>
-            <p><strong>Date:</strong> {{ latest_trip.timestamp.strftime("%Y-%m-%d %H:%M") }}</p>
-            <p><strong>Distance:</strong> {{ "%.1f"|format(latest_trip.distance_km) }} km</p>
-            <p><strong>Emissions:</strong> {{ "%.3f"|format(latest_trip.carbon_emission) }} kg CO2</p>
-            <p>
-                <strong>Trip Score:</strong>
-                <span class="{% if latest_trip.score_earned >= 7 %}score-good{% elif latest_trip.score_earned >= 4 %}score-mid{% else %}score-bad{% endif %}">
-                    {{ "%.1f"|format(latest_trip.score_earned) }}/10
-                </span>
-            </p>
-        {% else %}
-            <div class="notice">
-                No trips logged yet. Start by adding your first trip.
-            </div>
-        {% endif %}
-    </div>
-
     <div class="card">
         <h2>Profile Information</h2>
         <p><strong>Username:</strong> {{ user.username }}</p>
-        <p><strong>Total Trips Logged:</strong> {{ trip_count }}</p>
-        <p>
-            <strong>Achievement:</strong>
-            <span class="achievement-badge badge-level-{{ user.current_score|int }}">
-                {{ achievement_badge(user.current_score) }}
-            </span>
-        </p>
+    </div>
 
-        <div class="inline-actions" style="margin-top: 16px;">
-            <a href="{{ url_for('wall_of_fame') }}" class="btn btn-secondary">Wall of Fame</a>
-            <a href="{{ url_for('log_trip') }}" class="btn">Log Trip</a>
-        </div>
+    <div class="card">
+        <h2>Account Status</h2>
+        <p><strong>Current Score:</strong> {{ "%.1f"|format(user.current_score) }}/10</p>
     </div>
 </div>
 

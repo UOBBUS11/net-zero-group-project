@@ -1,5 +1,6 @@
 from flask import render_template, flash, redirect, url_for, request, session, jsonify, current_app
 from datetime import datetime, timedelta
+import json
 import os
 import requests as http_requests
 from app import app, db
@@ -491,71 +492,6 @@ def profile():
         flash("Session expired. Please log in again.")
         return redirect(url_for("login"))
 
-    history_query = Trip.query.filter_by(user_id=user.id).join(TransportMode)
-
-    search_date = (request.args.get("date") or "").strip()
-    search_location = (request.args.get("location") or "").strip()
-    search_mode = (request.args.get("mode") or "").strip()
-
-    if search_date:
-        history_query = history_query.filter(db.func.date(Trip.timestamp) == search_date)
-
-    if search_location:
-        history_query = history_query.filter(Trip.location.ilike(f"%{search_location}%"))
-
-    if search_mode:
-        history_query = history_query.filter(TransportMode.mode_name == search_mode)
-
-    history = history_query.order_by(Trip.timestamp.desc()).all()
-    all_modes = TransportMode.query.order_by(TransportMode.mode_name.asc()).all()
-
-    trip_count = len(history)
-    latest_trip = history[0] if history else None
-    total_emissions = round(sum(trip.carbon_emission for trip in history), 3)
-    average_emissions = round(total_emissions / trip_count, 3) if trip_count > 0 else 0
-
-    mode_counts = {}
-    for trip in history:
-        mode_name = trip.mode.mode_name
-        mode_counts[mode_name] = mode_counts.get(mode_name, 0) + 1
-
-    most_used_transport = max(mode_counts, key=mode_counts.get) if mode_counts else "None"
-
-    lower_carbon_modes = {
-        "Walking",
-        "Bicycle",
-        "Electric Bicycle",
-        "Train",
-        "Bus",
-        "Electric Motorbike",
-        "Electric Car"
-    }
-    lower_carbon_trips = sum(1 for trip in history if trip.mode.mode_name in lower_carbon_modes)
-
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    weekly_trips = Trip.query.filter(
-        Trip.user_id == user.id,
-        Trip.timestamp >= week_ago
-    ).all()
-
-    weekly_target = 10.0
-    weekly_emissions = round(sum(trip.carbon_emission for trip in weekly_trips), 3)
-    progress_percent = round((weekly_emissions / weekly_target) * 100, 1) if weekly_target > 0 else 0
-    progress_percent_capped = min(progress_percent, 100)
-
-    if weekly_emissions <= weekly_target * 0.5:
-        impact_level = "Low impact"
-        impact_class = "impact-low"
-    elif weekly_emissions <= weekly_target * 0.85:
-        impact_level = "Moderate impact"
-        impact_class = "impact-medium"
-    elif weekly_emissions <= weekly_target:
-        impact_level = "High impact"
-        impact_class = "impact-high"
-    else:
-        impact_level = "Target exceeded"
-        impact_class = "impact-exceeded"
-
     edit_profile_form = EditProfileForm(prefix="profile")
     change_password_form = ChangePasswordForm(prefix="password")
 
@@ -598,19 +534,151 @@ def profile():
             else:
                 flash("Please correct the password form errors.")
 
-    # Developer note:
-    # If a future dashboard-summary feature is added, this profile route is the right place
-    # to assemble and render it so users see that summary after clicking the Profile tab.
-    # Example additions later:
-    # - total trips
-    # - average carbon per trip
-    # - recent achievements
-    # - weekly/monthly sustainability summary
-    # - streaks and milestone cards
-
     return render_template(
         "profile.html",
         user=user,
+        edit_profile_form=edit_profile_form,
+        change_password_form=change_password_form
+    )
+
+# ── Logout ──────────────────────────────────────────────────────
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for("login"))
+# ── Interactive Dashboard ──────────────────────────────────────────────────────
+@app.route("/interactive_dashboard")
+def interactive_dashboard():
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        session.pop("user_id", None)
+        flash("Session expired. Please log in again.")
+        return redirect(url_for("login"))
+
+    # Personal trip history
+    history = (
+        Trip.query
+        .filter_by(user_id=user.id)
+        .join(TransportMode)
+        .order_by(Trip.timestamp.desc())
+        .all()
+    )
+
+    trip_count = len(history)
+    latest_trip = history[0] if history else None
+    total_emissions = round(sum(trip.carbon_emission for trip in history), 3)
+    average_emissions = round(total_emissions / trip_count, 3) if trip_count > 0 else 0
+
+    mode_counts = {}
+    for trip in history:
+        mode_name = trip.mode.mode_name
+        mode_counts[mode_name] = mode_counts.get(mode_name, 0) + 1
+
+    most_used_transport = max(mode_counts, key=mode_counts.get) if mode_counts else "None"
+
+    lower_carbon_modes = {
+        "Walking",
+        "Bicycle",
+        "Electric Bicycle",
+        "Train",
+        "Bus",
+        "Electric Motorbike",
+        "Electric Car"
+    }
+    lower_carbon_trips = sum(
+        1 for trip in history if trip.mode.mode_name in lower_carbon_modes
+    )
+
+    # Weekly summary
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    weekly_trips = (
+        Trip.query
+        .filter(Trip.user_id == user.id, Trip.timestamp >= week_ago)
+        .order_by(Trip.timestamp.desc())
+        .all()
+    )
+
+    weekly_target = 10.0
+    weekly_emissions = round(sum(trip.carbon_emission for trip in weekly_trips), 3)
+    progress_percent = round((weekly_emissions / weekly_target) * 100, 1) if weekly_target > 0 else 0
+    progress_percent_capped = min(progress_percent, 100)
+
+    if weekly_emissions <= weekly_target * 0.5:
+        impact_level = "Low impact"
+        impact_class = "impact-low"
+    elif weekly_emissions <= weekly_target * 0.85:
+        impact_level = "Moderate impact"
+        impact_class = "impact-medium"
+    elif weekly_emissions <= weekly_target:
+        impact_level = "High impact"
+        impact_class = "impact-high"
+    else:
+        impact_level = "Target exceeded"
+        impact_class = "impact-exceeded"
+
+    # Leaderboard
+    users = User.query.order_by(User.current_score.desc(), User.username.asc()).all()
+
+    leaderboard = []
+    for index, entry in enumerate(users, start=1):
+        leaderboard.append({
+            "rank": index,
+            "user": entry,
+            "badge": achievement_badge(entry.current_score),
+            "badge_level": badge_level(entry.current_score),
+            "title": leaderboard_title(index),
+            "is_you": entry.id == user.id
+        })
+
+    total_users = len(users)
+    your_rank = next((item["rank"] for item in leaderboard if item["is_you"]), None)
+
+    # Recent activity
+    recent_trips = history[:5]
+
+    # Helpful insight message
+    if trip_count == 0:
+        dashboard_tip = "You have not logged any trips yet. Start by adding your first trip."
+    elif lower_carbon_trips == trip_count:
+        dashboard_tip = "Excellent work. All of your logged trips are using lower-carbon transport."
+    elif most_used_transport in {"Petrol Car", "Diesel Car", "Motorbike", "Plane"}:
+        dashboard_tip = f"Your most-used transport is {most_used_transport}. Switching some trips to train, bus, cycling, or walking could improve your score."
+    elif latest_trip and latest_trip.score_earned < 5:
+        dashboard_tip = "Your latest trip had a low score. Try a greener mode next time for a better result."
+    else:
+        dashboard_tip = "You are making progress. Keep logging trips to improve your score and badge."
+
+    # Chart data
+    today = datetime.utcnow().date()
+    last_7_days_labels = []
+    last_7_days_values = []
+
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_label = day.strftime("%d %b")
+        day_total = round(
+            sum(trip.carbon_emission for trip in history if trip.timestamp.date() == day),
+            3
+        )
+        last_7_days_labels.append(day_label)
+        last_7_days_values.append(day_total)
+
+    mode_chart_labels = list(mode_counts.keys())
+    mode_chart_values = list(mode_counts.values())
+
+    recent_score_trips = list(reversed(history[:10]))
+    score_trend_labels = [trip.timestamp.strftime("%d %b") for trip in recent_score_trips]
+    score_trend_values = [trip.score_earned for trip in recent_score_trips]
+
+    return render_template(
+        "interactive_dashboard.html",
+        user=user,
+        history=history,
         trip_count=trip_count,
         latest_trip=latest_trip,
         total_emissions=total_emissions,
@@ -623,23 +691,21 @@ def profile():
         progress_percent_capped=progress_percent_capped,
         impact_level=impact_level,
         impact_class=impact_class,
-        history=history,
-        all_modes=all_modes,
-        search_date=search_date,
-        search_location=search_location,
-        search_mode=search_mode,
-        edit_profile_form=edit_profile_form,
-        change_password_form=change_password_form,
-        achievement_badge=achievement_badge
+        leaderboard=leaderboard,
+        your_rank=your_rank,
+        total_users=total_users,
+        your_badge=achievement_badge(user.current_score),
+        your_badge_level=badge_level(user.current_score),
+        dashboard_tip=dashboard_tip,
+        recent_trips=recent_trips,
+        mode_counts=mode_counts,
+        emissions_chart_labels=last_7_days_labels,
+        emissions_chart_values=last_7_days_values,
+        mode_chart_labels=mode_chart_labels,
+        mode_chart_values=mode_chart_values,
+        score_chart_labels=score_trend_labels,
+        score_chart_values=score_trend_values
     )
-
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    flash("You have been logged out.")
-    return redirect(url_for("login"))
-
 
 # ── Navigate ──────────────────────────────────────────────────────────────────
 

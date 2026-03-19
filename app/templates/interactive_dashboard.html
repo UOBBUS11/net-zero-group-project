@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="eco-dashboard">
+    <div class="eco-shell">
+
+        <!-- Sidebar -->
+        <aside class="eco-sidebar">
+            <div class="eco-logo">
+                <div class="eco-logo-mark">NZ</div>
+                <div>
+                    <div class="eco-logo-title">Eco Dashboard</div>
+                    <div class="eco-logo-subtitle">Net Zero Tracker</div>
+                </div>
+            </div>
+
+            <nav class="eco-menu">
+                <a href="#overview" class="eco-menu-link active">Overview</a>
+                <a href="#performance" class="eco-menu-link">Performance</a>
+                <a href="#target" class="eco-menu-link">Target</a>
+                <a href="#history" class="eco-menu-link">Trip History</a>
+                <a href="#leaderboard" class="eco-menu-link">Leaderboard</a>
+            </nav>
+
+            <div class="eco-sidebar-cards">
+                <div class="eco-side-stat">
+                    <div class="eco-side-icon eco-green">★</div>
+                    <div class="eco-side-content">
+                        <span>Current Score</span>
+                        <strong>{{ user.current_score }}/10</strong>
+                        <small>{{ your_badge }} • Level {{ your_badge_level }}</small>
+                    </div>
+                </div>
+
+                <div class="eco-side-stat">
+                    <div class="eco-side-icon eco-blue">↺</div>
+                    <div class="eco-side-content">
+                        <span>Total Trips</span>
+                        <strong>{{ trip_count }}</strong>
+                        <small>Recorded journeys</small>
+                    </div>
+                </div>
+
+                <div class="eco-side-stat">
+                    <div class="eco-side-icon eco-orange">CO₂</div>
+                    <div class="eco-side-content">
+                        <span>Total Emissions</span>
+                        <strong>{{ total_emissions }} kg</strong>
+                        <small>Combined footprint</small>
+                    </div>
+                </div>
+
+                <div class="eco-side-stat">
+                    <div class="eco-side-icon eco-purple">⇄</div>
+                    <div class="eco-side-content">
+                        <span>Avg / Trip</span>
+                        <strong>{{ average_emissions }} kg</strong>
+                        <small>Per recorded trip</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="eco-main">
+
+            <!-- Top bar -->
+            <section class="eco-topbar" id="overview">
+                <div>
+                    <h1 class="eco-page-title">Dashboard Overview</h1>
+                    <p class="eco-page-subtitle">
+                        Track your transport habits, emissions, score, and progress toward a lower-carbon lifestyle.
+                    </p>
+                </div>
+
+                <div class="eco-topbar-actions">
+                    <a href="{{ url_for('log_trip') }}" class="eco-btn eco-btn-primary">Log New Trip</a>
+                    <a href="{{ url_for('wall_of_fame') }}" class="eco-btn eco-btn-secondary">View Leaderboard</a>
+                </div>
+            </section>
+
+            <!-- KPI cards -->
+            <section class="eco-kpi-grid">
+                <div class="eco-card eco-kpi-card eco-kpi-green">
+                    <div class="eco-kpi-label">Badge</div>
+                    <div class="eco-kpi-value">{{ your_badge }}</div>
+                    <div class="eco-kpi-meta">Level {{ your_badge_level }}</div>
+                </div>
+
+                <div class="eco-card eco-kpi-card eco-kpi-blue">
+                    <div class="eco-kpi-label">Most Used Mode</div>
+                    <div class="eco-kpi-value">
+                        {{ most_used_transport if most_used_transport else "N/A" }}
+                    </div>
+                    <div class="eco-kpi-meta">Your most frequent choice</div>
+                </div>
+
+                <div class="eco-card eco-kpi-card eco-kpi-yellow">
+                    <div class="eco-kpi-label">Latest Trip</div>
+                    <div class="eco-kpi-value">
+                        {{ latest_trip.mode.mode_name if latest_trip else "No trips" }}
+                    </div>
+                    <div class="eco-kpi-meta">
+                        {% if latest_trip %}
+                            {{ latest_trip.distance_km }} km
+                        {% else %}
+                            Start logging journeys
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="eco-card eco-kpi-card eco-kpi-red">
+                    <div class="eco-kpi-label">Emission Status</div>
+                    <div class="eco-kpi-value">
+                        {% if average_emissions <= 2 %}
+                            Low
+                        {% elif average_emissions <= 5 %}
+                            Medium
+                        {% else %}
+                            High
+                        {% endif %}
+                    </div>
+                    <div class="eco-kpi-meta">Based on average trip emissions</div>
+                </div>
+            </section>
+
+            <!-- Main grid -->
+            <section class="eco-main-grid" id="performance">
+                <div class="eco-card eco-card-large">
+                    <div class="eco-card-head">
+                        <h3>Transport Breakdown</h3>
+                        <span>Usage by transport type</span>
+                    </div>
+
+                    <div class="eco-chart-wrap eco-chart-lg">
+                        <canvas id="transportBreakdownChart"></canvas>
+                    </div>
+
+                    <div class="eco-legend-list">
+                        {% for mode, count in mode_counts.items() %}
+                        <div class="eco-legend-item">
+                            <span>{{ mode }}</span>
+                            <strong>{{ count }} trips</strong>
+                        </div>
+                        {% else %}
+                        <div class="eco-legend-item">
+                            <span>No transport data yet</span>
+                            <strong>0 trips</strong>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="eco-card">
+                    <div class="eco-card-head">
+                        <h3>Quick Summary</h3>
+                        <span>Personal performance</span>
+                    </div>
+
+                    <div class="eco-progress-panel">
+                        <div class="eco-progress-metrics">
+                            <div>
+                                <span>Current Score</span>
+                                <strong>{{ user.current_score }}/10</strong>
+                            </div>
+                            <div>
+                                <span>Total Trips</span>
+                                <strong>{{ trip_count }}</strong>
+                            </div>
+                            <div>
+                                <span>Total CO₂</span>
+                                <strong>{{ total_emissions }} kg</strong>
+                            </div>
+                        </div>
+
+                        {% set score_progress = (user.current_score * 10) %}
+                        {% if score_progress <= 30 %}
+                            {% set score_class = "impact-exceeded" %}
+                        {% elif score_progress <= 60 %}
+                            {% set score_class = "impact-high" %}
+                        {% elif score_progress <= 80 %}
+                            {% set score_class = "impact-medium" %}
+                        {% else %}
+                            {% set score_class = "impact-low" %}
+                        {% endif %}
+
+                        <div>
+                            <p class="eco-tip-text">Score progress</p>
+                            <div class="eco-progress-bar">
+                                <div class="eco-progress-fill {{ score_class }}" style="width: {{ score_progress }}%;"></div>
+                            </div>
+                        </div>
+
+                        <p class="eco-tip-text">
+                            {{ dashboard_tip }}
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lower grid -->
+            <section class="eco-lower-grid" id="target">
+                <div class="eco-card">
+                    <div class="eco-card-head">
+                        <h3>Emissions Trend</h3>
+                        <span>Last 7 days</span>
+                    </div>
+
+                    <div class="eco-chart-wrap eco-chart-md">
+                        <canvas id="emissionsTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="eco-card">
+                    <div class="eco-card-head">
+                        <h3>Target Tracker</h3>
+                        <span>Weekly target progress</span>
+                    </div>
+
+                    <div class="eco-progress-panel">
+                        <div class="eco-progress-metrics">
+                            <div>
+                                <span>Weekly Target</span>
+                                <strong>{{ weekly_target }} kg</strong>
+                            </div>
+                            <div>
+                                <span>This Week</span>
+                                <strong>{{ weekly_emissions }} kg</strong>
+                            </div>
+                            <div>
+                                <span>Status</span>
+                                <strong>{{ impact_level }}</strong>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p class="eco-tip-text">Progress toward weekly emission limit</p>
+                            <div class="eco-progress-bar">
+                                <div class="eco-progress-fill {{ impact_class }}" style="width: {{ progress_percent_capped }}%;"></div>
+                            </div>
+                        </div>
+
+                        <p class="eco-tip-text">
+                            {{ progress_percent }}% of your weekly target used.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tables -->
+            <section class="eco-table-grid">
+                <div class="eco-card" id="history">
+                    <div class="eco-card-head">
+                        <h3>Recent Trip History</h3>
+                        <span>Latest recorded journeys</span>
+                    </div>
+
+                    <div class="eco-table-wrap">
+                        <table class="eco-table">
+                            <thead>
+                                <tr>
+                                    <th>Mode</th>
+                                    <th>Distance</th>
+                                    <th>CO₂</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trip in history[:8] %}
+                                <tr>
+                                    <td>{{ trip.mode.mode_name }}</td>
+                                    <td>{{ trip.distance_km }} km</td>
+                                    <td>{{ trip.carbon_emission }} kg</td>
+                                    <td class="eco-truncate">{{ trip.timestamp.strftime('%d %b %Y') }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4">No trip history available yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="eco-card" id="leaderboard">
+                    <div class="eco-card-head">
+                        <h3>Leaderboard</h3>
+                        <span>Top performers</span>
+                    </div>
+
+                    <div class="eco-table-wrap">
+                        <table class="eco-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>User</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in leaderboard[:8] %}
+                                <tr class="{% if entry.is_you %}eco-row-highlight{% endif %}">
+                                    <td>{{ entry.rank }}</td>
+                                    <td>
+                                        {{ entry.user.username }}
+                                        {% if entry.is_you %}
+                                            <span class="eco-you-badge">You</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="eco-score-chip">{{ entry.user.current_score }}/10</span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3">No leaderboard data available.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const transportLabels = {{ mode_chart_labels | tojson }};
+    const transportValues = {{ mode_chart_values | tojson }};
+
+    const tripHistory = {{ emissions_chart_labels | tojson }};
+    const emissionValues = {{ emissions_chart_values | tojson }};
+
+    const themeStyles = getComputedStyle(document.body);
+    const textColor = themeStyles.getPropertyValue('--text').trim();
+    const mutedColor = themeStyles.getPropertyValue('--muted').trim();
+    const borderColor = themeStyles.getPropertyValue('--border').trim();
+    const accentColor = themeStyles.getPropertyValue('--accent').trim();
+    const accent2Color = themeStyles.getPropertyValue('--accent-2').trim();
+
+    const breakdownCtx = document.getElementById('transportBreakdownChart');
+    if (breakdownCtx) {
+        new Chart(breakdownCtx, {
+            type: 'doughnut',
+            data: {
+                labels: transportLabels,
+                datasets: [{
+                    data: transportValues,
+                    backgroundColor: [
+                        accentColor,
+                        accent2Color,
+                        '#d29922',
+                        '#a78bfa',
+                        '#ef4444',
+                        '#38bdf8',
+                        '#10b981',
+                        '#f97316'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: textColor
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const trendCtx = document.getElementById('emissionsTrendChart');
+    if (trendCtx) {
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: tripHistory,
+                datasets: [{
+                    label: 'CO₂ Emission (kg)',
+                    data: emissionValues,
+                    borderColor: accentColor,
+                    backgroundColor: 'rgba(47, 129, 247, 0.12)',
+                    tension: 0.35,
+                    fill: true
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: mutedColor },
+                        grid: { color: borderColor }
+                    },
+                    y: {
+                        ticks: { color: mutedColor },
+                        grid: { color: borderColor }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: textColor
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

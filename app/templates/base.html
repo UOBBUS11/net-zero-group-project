@@ -24,11 +24,13 @@
                     <a class="nav-btn" href="{{ url_for('logout') }}">Logout</a>
 
                 {% elif session.get('user_id') %}
-                    <a class="nav-btn" href="{{ url_for('profile') }}">Profile</a>
+
+                    <a class="nav-btn" href="{{ url_for('interactive_dashboard') }}">Dashboard</a>
                     <a class="nav-btn" href="{{ url_for('wall_of_fame') }}">Wall of Fame</a>
                     <a class="nav-btn" href="{{ url_for('trip_history') }}">Trip History</a>
                     <a class="nav-btn" href="{{ url_for('log_trip') }}">Log Trip</a>
                     <a class="nav-btn" href="{{ url_for('navigate') }}">Navigate</a>
+                    <a class="nav-btn" href="{{ url_for('profile') }}">Profile</a>
                     <a class="nav-btn" href="{{ url_for('logout') }}">Logout</a>
 
                 {% else %}
