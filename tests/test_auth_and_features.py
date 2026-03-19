@@ -3,6 +3,7 @@ from app.models import Trip, User
 from tests.conftest import login_user, login_admin
 
 
+# T-MB-00: Valid user registration creates a new account successfully
 def test_register_valid_user(client, app_context):
     response = client.post(
         "/register",
@@ -20,6 +21,7 @@ def test_register_valid_user(client, app_context):
     assert User.query.filter_by(username="newuser").first() is not None
 
 
+# T-MB-00A: Reserved username 'admin' cannot be registered by a normal user
 def test_register_rejects_reserved_admin_username(client, app_context):
     response = client.post(
         "/register",
@@ -36,6 +38,7 @@ def test_register_rejects_reserved_admin_username(client, app_context):
     assert b"admin" in response.data
 
 
+# T-MB-00B: Duplicate usernames are rejected at registration
 def test_register_rejects_duplicate_username(client, app_context, normal_user):
     response = client.post(
         "/register",
@@ -51,6 +54,7 @@ def test_register_rejects_duplicate_username(client, app_context, normal_user):
     assert b"That username is already taken." in response.data
 
 
+# T-MB-00C: Valid normal user login succeeds
 def test_login_valid_normal_user(client, normal_user):
     response = login_user(client)
 
@@ -59,6 +63,7 @@ def test_login_valid_normal_user(client, normal_user):
     assert b"Profile Settings" in response.data
 
 
+# T-MB-00D: Username 'admin' is blocked in the normal user login flow
 def test_login_blocks_admin_username_in_normal_login(client, admin_user):
     response = client.post(
         "/login",
@@ -74,6 +79,7 @@ def test_login_blocks_admin_username_in_normal_login(client, admin_user):
     assert b"admin" in response.data
 
 
+# T-MB-00E: Admin login succeeds through the administrator login path
 def test_admin_login_works(client, admin_user):
     response = login_admin(client)
 
@@ -82,6 +88,7 @@ def test_admin_login_works(client, admin_user):
     assert b"Admin Panel" in response.data
 
 
+# T-MB-05: Wall of Fame orders users by highest score first
 def test_wall_of_fame_orders_users_by_score(client, normal_user, second_user, third_user):
     login_user(client)
 
@@ -93,6 +100,7 @@ def test_wall_of_fame_orders_users_by_score(client, normal_user, second_user, th
     assert html.index("alice") < html.index("bob")
 
 
+# T-MB-01: Valid trip log creates a trip and updates the user's score
 def test_log_trip_creates_trip_and_updates_score(client, app_context, normal_user, walking_mode):
     login_user(client)
 
@@ -119,6 +127,7 @@ def test_log_trip_creates_trip_and_updates_score(client, app_context, normal_use
     assert normal_user.current_score == trip.score_earned
 
 
+# T-MB-02: Invalid trip distance is rejected during trip logging
 def test_log_trip_rejects_invalid_distance(client, normal_user, walking_mode):
     login_user(client)
 
@@ -138,6 +147,7 @@ def test_log_trip_rejects_invalid_distance(client, normal_user, walking_mode):
     assert b"Distance must be positive" in response.data
 
 
+# T-MB-08: Trip history can be filtered by location
 def test_trip_history_filters_by_location(client, app_context, normal_user, walking_mode, train_mode):
     trip1 = Trip(
         distance_km=2.0,
@@ -175,6 +185,7 @@ def test_trip_history_filters_by_location(client, app_context, normal_user, walk
     assert "London" not in html
 
 
+# T-MB-09: Trip history can be filtered by transport mode
 def test_trip_history_filters_by_mode(client, app_context, normal_user, walking_mode, train_mode):
     trip1 = Trip(
         distance_km=2.0,
@@ -213,6 +224,8 @@ def test_trip_history_filters_by_mode(client, app_context, normal_user, walking_
     assert "walk breakdown" in html
     assert "train breakdown" not in html
 
+
+# T-MB-10A: Profile username can be updated successfully
 def test_profile_username_update(client, app_context, normal_user):
     login_user(client)
 
@@ -230,6 +243,7 @@ def test_profile_username_update(client, app_context, normal_user):
     assert User.query.filter_by(username="mattnew").first() is not None
 
 
+# T-MB-10B: Password change is rejected when the current password is wrong
 def test_profile_password_change_rejects_wrong_current_password(client, app_context, normal_user):
     login_user(client)
 
@@ -248,6 +262,7 @@ def test_profile_password_change_rejects_wrong_current_password(client, app_cont
     assert b"Your current password is incorrect." in response.data
 
 
+# T-MB-10C: Password change succeeds with the correct current password
 def test_profile_password_change_succeeds(client, app_context, normal_user):
     login_user(client)
 

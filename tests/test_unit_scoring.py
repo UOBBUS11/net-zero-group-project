@@ -8,18 +8,21 @@ from app.routes import (
 )
 
 
+# T-MB-06: Score values are clamped to 0-10 and rounded to 1 decimal place
 def test_round_score_clamps_and_rounds():
     assert round_score(11.27) == 10.0
     assert round_score(-3.0) == 0.0
     assert round_score(6.66) == 6.7
 
 
+# T-MB-03A: Emission zone name is inferred from location text
 def test_infer_zone_name():
     assert infer_zone_name("Birmingham City Centre") == "Birmingham Clean Air Zone"
     assert infer_zone_name("London Bridge") == "London ULEZ"
     assert infer_zone_name("Leeds") == "Emission Zone"
 
 
+# T-MB-03B: Low-carbon walking trip scores better than petrol trip for same short journey
 def test_short_walking_trip_scores_better_than_short_petrol_trip(walking_mode, petrol_mode):
     walk_carbon, walk_score, _, _ = calculate_trip_score(
         distance=1.0,
@@ -38,6 +41,7 @@ def test_short_walking_trip_scores_better_than_short_petrol_trip(walking_mode, p
     assert walk_score > petrol_score
 
 
+# T-MB-03: Emission-zone penalty is applied to petrol trips
 def test_emission_zone_penalty_applied_to_petrol_trip(petrol_mode):
     _, score_no_zone, breakdown_no_zone, _ = calculate_trip_score(
         distance=5.0,
@@ -58,6 +62,7 @@ def test_emission_zone_penalty_applied_to_petrol_trip(petrol_mode):
     assert zone_name == "Birmingham Clean Air Zone"
 
 
+# T-MB-04: Emission-zone bonus is applied to low-carbon train trips
 def test_emission_zone_bonus_applied_to_train_trip(train_mode):
     _, score_no_zone, _, _ = calculate_trip_score(
         distance=5.0,
@@ -77,6 +82,7 @@ def test_emission_zone_bonus_applied_to_train_trip(train_mode):
     assert zone_name == "London ULEZ"
 
 
+# T-MB-07: User total score is recalculated as the average of trip scores
 def test_recalculate_user_score_averages_trip_scores(app_context, normal_user, walking_mode):
     trip1 = Trip(
         distance_km=1.0,
