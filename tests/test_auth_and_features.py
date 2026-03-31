@@ -1,7 +1,9 @@
+import io
+from datetime import datetime
+
 from app import db
 from app.models import Trip, User
 from tests.conftest import login_user, login_admin
-
 
 # T-MB-00: Valid user registration creates a new account successfully
 def test_register_valid_user(client, app_context):
@@ -60,7 +62,7 @@ def test_login_valid_normal_user(client, normal_user):
 
     assert response.status_code == 200
     assert b"Welcome back, matt." in response.data
-    assert b"Profile Settings" in response.data
+    assert b"Dashboard" in response.data
 
 
 # T-MB-00D: Username 'admin' is blocked in the normal user login flow
@@ -282,3 +284,171 @@ def test_profile_password_change_succeeds(client, app_context, normal_user):
 
     updated_user = User.query.filter_by(username="matt").first()
     assert updated_user.check_password("newpassword123") is True
+
+
+# T-JE-01: Login sends normal user to dashboard by default
+def test_login_lands_on_dashboard_for_my_feature(client, normal_user):
+    response = login_user(client)
+
+    assert response.status_code == 200
+    assert b"Welcome back, matt." in response.data
+    assert b"Dashboard" in response.data
+
+
+# T-JE-02: Profile dropdown shows dashboard, account settings, and logout
+def test_profile_dropdown_items_visible_for_my_feature(client, normal_user):
+    login_user(client)
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert b"Dashboard" in response.data
+    assert b"Account Settings" in response.data
+    assert b"Logout" in response.data
+
+
+# T-JE-03: Logout from the profile dropdown returns the user to login
+def test_logout_works_for_my_feature(client, normal_user):
+    login_user(client)
+    response = client.get("/logout", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"You have been logged out." in response.data or b"Login" in response.data
+
+
+# T-JE-04: Profile page shows the profile picture upload form
+def test_profile_page_shows_upload_form_for_my_feature(client, normal_user):
+    login_user(client)
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert b"Profile Picture" in response.data
+    assert b"Upload Photo" in response.data
+
+
+# T-JE-05: Valid profile image upload succeeds
+def test_profile_image_upload_valid_file_for_my_feature(client, app_context, normal_user):
+    login_user(client)
+
+    response = client.post(
+        "/profile",
+        data={
+            "avatar-profile_image": (io.BytesIO(b"fake image data"), "avatar.png"),
+            "avatar-submit": "Upload Photo",
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Profile picture updated successfully." in response.data
+
+
+# T-JE-06: Invalid profile image upload is rejected
+def test_profile_image_upload_rejects_invalid_file_type_for_my_feature(client, app_context, normal_user):
+    login_user(client)
+
+    response = client.post(
+        "/profile",
+        data={
+            "avatar-profile_image": (io.BytesIO(b"not an image"), "notes.txt"),
+            "avatar-submit": "Upload Photo",
+        },
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"Images only please." in response.data or b"Please upload a valid image file." in response.data
+
+
+# T-JE-07: Trip history requires login
+def test_trip_history_requires_login_for_my_feature(client):
+    response = client.get("/trip-history", follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"Please log in first." in response.data or b"Login" in response.data
+
+
+# T-JE-08: Trip history can be filtered by date
+def test_trip_history_filters_by_date_for_my_feature(client, app_context, normal_user, walking_mode, train_mode):
+    trip1 = Trip(
+        distance_km=2.0,
+        timestamp=datetime(2026, 3, 30, 9, 0, 0),
+        carbon_emission=0.0,
+        score_earned=8.0,
+        location="Birmingham",
+        location_normalized="birmingham",
+        entered_emission_zone=False,
+        emission_zone_name=None,
+        score_breakdown="walk breakdown",
+        user=normal_user,
+        mode=walking_mode,
+    )
+    trip2 = Trip(
+        distance_km=10.0,
+        timestamp=datetime(2026, 3, 31, 10, 30, 0),
+        carbon_emission=0.4,
+        score_earned=6.0,
+        location="London",
+        location_normalized="london",
+        entered_emission_zone=False,
+        emission_zone_name=None,
+        score_breakdown="train breakdown",
+        user=normal_user,
+        mode=train_mode,
+    )
+    db.session.add_all([trip1, trip2])
+    db.session.commit()
+
+    login_user(client)
+    response = client.get("/trip-history?date=2026-03-30")
+
+    html = response.data.decode("utf-8")
+    assert response.status_code == 200
+    assert "Birmingham" in html
+    assert "London" not in html
+    assert "walk breakdown" in html
+    assert "train breakdown" not in html
+
+
+# T-JE-09: Trip history only shows the logged-in user's trips
+def test_trip_history_only_shows_logged_in_users_trips_for_my_feature(
+    client, app_context, normal_user, second_user, walking_mode, train_mode
+):
+    trip1 = Trip(
+        distance_km=2.0,
+        carbon_emission=0.0,
+        score_earned=8.0,
+        location="Birmingham",
+        location_normalized="birmingham",
+        entered_emission_zone=False,
+        emission_zone_name=None,
+        score_breakdown="matt trip",
+        user=normal_user,
+        mode=walking_mode,
+    )
+    trip2 = Trip(
+        distance_km=10.0,
+        carbon_emission=0.4,
+        score_earned=6.0,
+        location="Leeds",
+        location_normalized="leeds",
+        entered_emission_zone=False,
+        emission_zone_name=None,
+        score_breakdown="alice trip",
+        user=second_user,
+        mode=train_mode,
+    )
+    db.session.add_all([trip1, trip2])
+    db.session.commit()
+
+    login_user(client)
+    response = client.get("/trip-history")
+
+    html = response.data.decode("utf-8")
+    assert response.status_code == 200
+    assert "Birmingham" in html
+    assert "matt trip" in html
+    assert "Leeds" not in html
+    assert "alice trip" not in html
+
