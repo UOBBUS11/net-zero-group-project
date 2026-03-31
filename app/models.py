@@ -8,6 +8,7 @@ class User(db.Model):
     username = db.Column(db.String(64), index=True, unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     current_score = db.Column(db.Float, default=0.0)
+    profile_image = db.Column(db.String(255), nullable=True)
 
     trips = db.relationship('Trip', backref='user', lazy='dynamic')
 

@@ -25,13 +25,44 @@
 
                 {% elif session.get('user_id') %}
 
-                    <a class="nav-btn" href="{{ url_for('interactive_dashboard') }}">Dashboard</a>
                     <a class="nav-btn" href="{{ url_for('wall_of_fame') }}">Wall of Fame</a>
                     <a class="nav-btn" href="{{ url_for('trip_history') }}">Trip History</a>
                     <a class="nav-btn" href="{{ url_for('log_trip') }}">Log Trip</a>
                     <a class="nav-btn" href="{{ url_for('navigate') }}">Navigate</a>
-                    <a class="nav-btn" href="{{ url_for('profile') }}">Profile</a>
-                    <a class="nav-btn" href="{{ url_for('logout') }}">Logout</a>
+
+                    <details class="profile-menu">
+                        <summary class="profile-menu-trigger">
+                            <div class="nav-avatar">
+                                {% if nav_user and nav_user.profile_image %}
+                                    <img
+                                        src="{{ url_for('static', filename='uploads/profile_pics/' ~ nav_user.profile_image) }}"
+                                        alt="Profile picture"
+                                    >
+                                {% elif nav_user %}
+                                    <span>{{ nav_user.username[0]|upper }}</span>
+                                {% else %}
+                                    <span>U</span>
+                                {% endif %}
+                            </div>
+
+                            <span class="nav-username">
+                                {% if nav_user %}
+                                    {{ nav_user.username }}
+                                {% else %}
+                                    Profile
+                                {% endif %}
+                            </span>
+
+                            <span class="nav-caret">▾</span>
+                        </summary>
+
+                        <div class="profile-dropdown">
+                            <a href="{{ url_for('dashboard') }}" class="profile-dropdown-item">Dashboard</a>
+                            <a href="{{ url_for('profile') }}" class="profile-dropdown-item">Account Settings</a>
+                            <div class="profile-dropdown-divider"></div>
+                            <a href="{{ url_for('logout') }}" class="profile-dropdown-item danger">Logout</a>
+                        </div>
+                    </details>
 
                 {% else %}
                     {% if request.endpoint == 'register' %}

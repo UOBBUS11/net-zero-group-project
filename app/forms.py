@@ -1,4 +1,5 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import (
     StringField,
     PasswordField,
@@ -68,3 +69,10 @@ class ChangePasswordForm(FlaskForm):
         validators=[DataRequired(), EqualTo('new_password', message='Passwords must match')]
     )
     submit = SubmitField('Change Password')
+
+class ProfileImageForm(FlaskForm):
+    profile_image = FileField(
+        'Profile Picture',
+        validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Images only please.')]
+    )
+    submit = SubmitField('Upload Photo')

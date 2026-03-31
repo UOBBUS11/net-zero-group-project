@@ -5,19 +5,53 @@
     <div>
         <h1>👤 Profile Settings</h1>
         <p class="muted">
-            Manage your account details and security settings.
+            Manage your account details, profile photo, and security settings.
         </p>
     </div>
 </div>
 
 <div class="grid grid-2">
     <div class="card">
-        <h2>Profile Information</h2>
-        <p><strong>Username:</strong> {{ user.username }}</p>
+        <h2>Profile Picture</h2>
+
+        <div class="profile-picture-section">
+            <div class="profile-picture-preview">
+                {% if user.profile_image %}
+                    <img
+                        src="{{ url_for('static', filename='uploads/profile_pics/' ~ user.profile_image) }}"
+                        alt="Profile picture"
+                    >
+                {% else %}
+                    <span>{{ user.username[0]|upper }}</span>
+                {% endif %}
+            </div>
+
+            <div class="profile-picture-info">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Current Score:</strong> {{ "%.1f"|format(user.current_score) }}/10</p>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            {{ profile_image_form.hidden_tag() }}
+
+            <div class="form-row">
+                <strong>{{ profile_image_form.profile_image.label }}</strong><br>
+                {{ profile_image_form.profile_image() }}
+                {% for error in profile_image_form.profile_image.errors %}
+                    <div class="error-text">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="inline-actions">
+                {{ profile_image_form.submit(class_="btn") }}
+            </div>
+        </form>
     </div>
 
     <div class="card">
-        <h2>Account Status</h2>
+        <h2>Account Overview</h2>
+        <p><strong>Username:</strong> {{ user.username }}</p>
         <p><strong>Current Score:</strong> {{ "%.1f"|format(user.current_score) }}/10</p>
     </div>
 </div>

@@ -2,7 +2,9 @@ from flask import render_template, flash, redirect, url_for, request, session, j
 from datetime import datetime, timedelta
 import json
 import os
+import uuid
 import requests as http_requests
+from werkzeug.utils import secure_filename
 from app import app, db
 from app.models import User, Trip, TransportMode, Administrator, SavedLocation
 from app.forms import (
@@ -11,7 +13,8 @@ from app.forms import (
     LogTripForm,
     EditRuleForm,
     EditProfileForm,
-    ChangePasswordForm
+    ChangePasswordForm,
+    ProfileImageForm
 )
 
 
@@ -21,6 +24,31 @@ def normalize_username(username):
 
 def normalize_location(location):
     return " ".join((location or "").strip().lower().split())
+
+
+def save_profile_image(upload_file, old_filename=None):
+    if not upload_file or not upload_file.filename:
+        return old_filename
+
+    safe_name = secure_filename(upload_file.filename)
+    extension = os.path.splitext(safe_name)[1].lower()
+
+    new_filename = f"{uuid.uuid4().hex}{extension}"
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_folder, exist_ok=True)
+
+    new_path = os.path.join(upload_folder, new_filename)
+    upload_file.save(new_path)
+
+    if old_filename:
+        old_path = os.path.join(upload_folder, old_filename)
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+
+    return new_filename
 
 
 def round_score(value):
@@ -182,6 +210,12 @@ def calculate_trip_score(distance, mode, location, enters_emission_zone):
     score = round_score(score)
     return carbon, score, " | ".join(breakdown), zone_name
 
+@app.context_processor
+def inject_nav_user():
+    nav_user = None
+    if "user_id" in session:
+        nav_user = User.query.get(session["user_id"])
+    return {"nav_user": nav_user}
 
 @app.route("/", methods=["GET", "POST"])
 @app.route("/login", methods=["GET", "POST"])
@@ -214,7 +248,7 @@ def login():
             session.clear()
             session["user_id"] = user.id
             flash(f"Welcome back, {user.username}.")
-            return redirect(url_for("profile"))
+            return redirect(url_for("dashboard"))
 
         flash("Invalid username or password.")
         return render_template("login.html", title="Login", form=form)
@@ -254,7 +288,7 @@ def register():
 
 @app.route("/dashboard")
 def dashboard():
-    return redirect(url_for("wall_of_fame"))
+    return redirect(url_for("interactive_dashboard"))
 
 
 @app.route("/wall-of-fame")
@@ -479,7 +513,6 @@ def admin_panel():
         form=form
     )
 
-
 @app.route("/profile", methods=["GET", "POST"])
 def profile():
     if "user_id" not in session:
@@ -494,6 +527,7 @@ def profile():
 
     edit_profile_form = EditProfileForm(prefix="profile")
     change_password_form = ChangePasswordForm(prefix="password")
+    profile_image_form = ProfileImageForm(prefix="avatar")
 
     if request.method == "GET":
         edit_profile_form.username.data = user.username
@@ -534,12 +568,29 @@ def profile():
             else:
                 flash("Please correct the password form errors.")
 
+        elif profile_image_form.submit.data:
+            if profile_image_form.validate():
+                uploaded_file = profile_image_form.profile_image.data
+
+                if uploaded_file and uploaded_file.filename:
+                    user.profile_image = save_profile_image(uploaded_file, user.profile_image)
+                    db.session.commit()
+                    flash("Profile picture updated successfully.")
+                    return redirect(url_for("profile"))
+                else:
+                    flash("Please choose an image to upload.")
+            else:
+                flash("Please upload a valid image file.")
+
     return render_template(
         "profile.html",
         user=user,
         edit_profile_form=edit_profile_form,
-        change_password_form=change_password_form
+        change_password_form=change_password_form,
+        profile_image_form=profile_image_form
     )
+
+
 
 # ── Logout ──────────────────────────────────────────────────────
 @app.route("/logout")
