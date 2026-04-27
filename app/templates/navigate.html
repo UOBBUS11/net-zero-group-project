@@ -231,6 +231,23 @@
     <div class="nav-cards" id="nav-cards"></div>
 </div>
 
+<!-- Log Trip section (hidden until route is loaded) -->
+<div id="log-trip-section" style="display:none" class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div>
+            <strong>Want to log this trip?</strong>
+            <p class="muted" style="margin:4px 0 0 0" id="log-trip-summary">Select a mode above to log.</p>
+        </div>
+        <form id="log-trip-form" method="POST" action="{{ url_for('navigate_log') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" id="log-mode"        name="mode"        value="">
+            <input type="hidden" id="log-distance"    name="distance_km" value="">
+            <input type="hidden" id="log-destination" name="destination" value="">
+            <button type="submit" class="btn" id="log-trip-btn" disabled>Log this Trip</button>
+        </form>
+    </div>
+</div>
+
 <!-- HERE Maps JS API -->
 <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css">
 <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
@@ -238,8 +255,11 @@
 <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
 <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
 
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 <script>
 const HERE_API_KEY = {{ here_api_key | tojson }};
+const CSRF_TOKEN   = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 // ── Mode config ──────────────────────────────────────────────────────────────
 const MODE_CFG = {
@@ -348,7 +368,7 @@ async function getDirections() {
     try {
         const resp = await fetch('/navigate/route', {
             method : 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
             body   : JSON.stringify({
                 origin     : `${originLat},${originLng}`,
                 destination: `${destLat},${destLng}`,
@@ -467,6 +487,15 @@ function switchMode(modeKey) {
     document.querySelectorAll('.nav-card').forEach(c => c.classList.remove('active-card'));
     const card = document.getElementById(`card-${modeKey}`);
     if (card) card.classList.add('active-card');
+
+    // Update Log Trip form
+    document.getElementById('log-mode').value        = modeKey;
+    document.getElementById('log-distance').value    = route.distance_km;
+    document.getElementById('log-destination').value = document.getElementById('dest-input').value;
+    document.getElementById('log-trip-summary').textContent =
+        `${MODE_CFG[modeKey].icon} ${MODE_CFG[modeKey].label} — ${route.distance_km} km`;
+    document.getElementById('log-trip-btn').disabled = false;
+    document.getElementById('log-trip-section').style.display = 'block';
 
     // Draw route on map
     mapObjects.forEach(o => map.removeObject(o));

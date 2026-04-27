@@ -709,11 +709,11 @@ def interactive_dashboard():
 
 # ── Navigate ──────────────────────────────────────────────────────────────────
 
-# CO2 emission factors (kg per km)
-_NAV_CO2 = {
-    "car":             0.170,
-    "pedestrian":      0.000,
-    "publicTransport": 0.089,
+# Maps HERE transport mode keys to TransportMode names in the database
+_NAV_MODE_MAP = {
+    "car":             "Petrol Car",
+    "pedestrian":      "Walking",
+    "publicTransport": "Bus",
 }
 
 _NAV_LABELS = {
@@ -781,8 +781,11 @@ def navigate_route():
             section  = route_data["routes"][0]["sections"][0]
             dist_km  = round(section["summary"]["length"] / 1000, 1)
             dur_s    = section["summary"]["duration"]
-            co2_kg   = round(dist_km * _NAV_CO2[mode], 2)
             polyline = section.get("polyline", "")
+
+            db_mode = TransportMode.query.filter_by(mode_name=_NAV_MODE_MAP[mode]).first()
+            emission_factor = db_mode.emission_factor if db_mode else 0.0
+            co2_kg = round(dist_km * emission_factor, 2)
 
             results[mode] = {
                 "available":   True,
@@ -797,5 +800,93 @@ def navigate_route():
             results[mode] = {"available": False, "label": _NAV_LABELS[mode]}
 
     return jsonify(results)
+
+
+@app.route("/navigate/log", methods=["POST"])
+def navigate_log():
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
+    user = User.query.get(session["user_id"])
+    if not user:
+        session.pop("user_id", None)
+        flash("Session expired. Please log in again.")
+        return redirect(url_for("login"))
+
+    mode_key    = request.form.get("mode", "")
+    distance_km = request.form.get("distance_km", type=float)
+    destination = request.form.get("destination", "").strip() or "Navigate Trip"
+
+    if not mode_key or not distance_km:
+        flash("Invalid trip data. Please get directions first.")
+        return redirect(url_for("navigate"))
+
+    db_mode_name = _NAV_MODE_MAP.get(mode_key)
+    if not db_mode_name:
+        flash("Unrecognised transport mode.")
+        return redirect(url_for("navigate"))
+
+    mode = TransportMode.query.filter_by(mode_name=db_mode_name).first()
+    if not mode:
+        flash("Transport mode not found. Please contact an admin.")
+        return redirect(url_for("navigate"))
+
+    normalized_location = normalize_location(destination)
+    saved_location      = SavedLocation.query.filter_by(normalized_name=normalized_location).first()
+
+    enters_emission_zone = False
+    zone_name            = None
+
+    if saved_location:
+        enters_emission_zone = saved_location.in_emission_zone
+        zone_name            = saved_location.zone_name
+    else:
+        db.session.add(SavedLocation(
+            name=destination,
+            normalized_name=normalized_location,
+            in_emission_zone=False,
+            zone_name=None
+        ))
+
+    carbon, score, score_breakdown, calculated_zone_name = calculate_trip_score(
+        distance=distance_km,
+        mode=mode,
+        location=destination,
+        enters_emission_zone=enters_emission_zone
+    )
+
+    if calculated_zone_name:
+        zone_name = calculated_zone_name
+
+    trip = Trip(
+        distance_km           = distance_km,
+        carbon_emission       = carbon,
+        score_earned          = score,
+        location              = destination,
+        location_normalized   = normalized_location,
+        entered_emission_zone = enters_emission_zone,
+        emission_zone_name    = zone_name,
+        score_breakdown       = score_breakdown,
+        user                  = user,
+        mode                  = mode
+    )
+
+    db.session.add(trip)
+    db.session.flush()
+    recalculate_user_score(user)
+    db.session.commit()
+
+    if score >= 8.5:
+        recommendation = "Excellent choice. This was a very strong low-carbon trip."
+    elif score >= 6.5:
+        recommendation = "Good trip overall. A solid sustainable choice."
+    elif score >= 4.5:
+        recommendation = "Reasonable trip, but there may be greener alternatives."
+    else:
+        recommendation = "This trip scored poorly. Try a cleaner or more practical transport choice next time."
+
+    return render_template("result.html", trip=trip, recommendation=recommendation, user=user)
+
 
 # note: navigating github issues
