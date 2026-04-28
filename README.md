@@ -64,8 +64,8 @@ The project includes a database setup script:
 ```bash
 setup_db.py
 ```
-
-This script resets and repopulates the SQLite database with:
+As long as Database Model has not been changed;
+This script automatically resets and repopulates the SQLite database with:
 
 - default transport modes
 - default admin account
@@ -169,24 +169,3 @@ pytest tests/test_filename.py
 Replace `test_filename.py` with the actual test file name.
 
 ---
-
-#### Suggested Local Workflow
-
-When starting work on a fresh clone:
-
-```bash
-git clone https://github.com/UOBBUS11/net-zero-group-project.git
-cd net-zero-group-project
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-python setup_db.py
-flask run
-```
-
-Before committing changes, run:
-
-```bash
-pytest
-git status
-```
